@@ -79,7 +79,7 @@ export default async function HomePage() {
             </div>
             <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-3">
               Laporkan, Pantau,{' '}
-              <span className="text-yellow-300">Perbaiki</span>
+              <span className="text-yellow-300">Perbaiki testing</span>
             </h1>
             <p className="text-blue-100 text-base md:text-lg">
               Platform komunitas untuk memantau dan melaporkan kerusakan jalan.
