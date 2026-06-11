@@ -30,7 +30,7 @@ jobs:
 
             # ===== FRONTEND =====
             cd /root/apps/jalanrusak_id/frontend
-            npm ci
+            npm ci --legacy-peer-deps
             npm run build
 
             # ===== RESTART PM2 =====
