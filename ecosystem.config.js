@@ -8,7 +8,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
-      env_production: {
+      env: {
         NODE_ENV: 'production',
         PORT: 5000,
       },
@@ -25,12 +25,12 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
-      env_production: {
+      env: {
         NODE_ENV: 'production',
         PORT: 3001,
       },
-      error_file: '/apps/logs/logs/frontend-error.log',
-      out_file:   '/apps/logs/logs/frontend-out.log',
+      error_file: '/apps/logs/frontend-error.log',
+      out_file:   '/apps/logs/frontend-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
     },
   ],
