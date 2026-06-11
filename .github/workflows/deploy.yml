@@ -1,126 +1,41 @@
-name: Deploy to VPS
+name: Deploy LaporJalan
 
 on:
   push:
     branches: [main]
 
-# Batalkan run sebelumnya jika ada push baru sebelum selesai
-concurrency:
-  group: deploy-production
-  cancel-in-progress: true
-
 jobs:
-  # ─── Deteksi perubahan ────────────────────────────────────────────
-  changes:
-    name: Detect changed paths
+  deploy:
     runs-on: ubuntu-latest
-    outputs:
-      backend:  ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - 'ecosystem.config.js'
-            frontend:
-              - 'frontend/**'
-              - 'ecosystem.config.js'
 
-  # ─── Deploy Backend ───────────────────────────────────────────────
-  deploy-backend:
-    name: Deploy Backend
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
     steps:
-      - name: Deploy backend via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy ke VPS
+        uses: appleboy/ssh-action@master
         with:
-          host:     ${{ secrets.VPS_HOST }}
+          host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
-          port:     ${{ secrets.VPS_PORT || 22 }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            set -e
+            cd /root/apps/jalanrusak_id
 
-            APP_DIR="/apps/jalanrusak_id"
-            cd "$APP_DIR"
-
-            echo ">>> Pull latest code"
+            # Pull latest code
             git pull origin main
 
-            echo ">>> Install backend dependencies"
-            cd backend
-            npm ci --omit=dev
-
-            echo ">>> Generate Prisma client"
-            npx prisma generate
-
-            echo ">>> Build TypeScript"
-            npm run build
-
-            echo ">>> Restart PM2"
-            pm2 reload ecosystem.config.js --only jalanrusak-backend --env production
-            pm2 save
-
-            echo ">>> Backend deployed successfully"
-
-  # ─── Deploy Frontend ──────────────────────────────────────────────
-  deploy-frontend:
-    name: Deploy Frontend
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy frontend via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
-          port:     ${{ secrets.VPS_PORT || 22 }}
-          # Timeout lebih lama karena Next.js build bisa 3-5 menit
-          command_timeout: 15m
-          script: |
-            set -e
-
-            APP_DIR="/apps/jalanrusak_id"
-            cd "$APP_DIR"
-
-            echo ">>> Pull latest code"
-            git pull origin main
-
-            echo ">>> Install frontend dependencies"
-            cd frontend
+            # ===== BACKEND =====
+            cd /root/apps/jalanrusak_id/backend
             npm ci
-
-            echo ">>> Build Next.js"
+            npx prisma generate
+            npx prisma db push
             npm run build
 
-            echo ">>> Restart PM2"
-            pm2 reload ecosystem.config.js --only jalanrusak-frontend --env production
+            # ===== FRONTEND =====
+            cd /root/apps/jalanrusak_id/frontend
+            npm ci
+            npm run build
+
+            # ===== RESTART PM2 =====
+            pm2 reload jalanrusak-frontend || pm2 start /root/apps/jalanrusak_id/ecosystem.config.js --only jalanrusak-frontend
+            pm2 reload jalanrusak-backend  || pm2 start /root/apps/jalanrusak_id/ecosystem.config.js --only jalanrusak-backend
+
             pm2 save
-
-            echo ">>> Frontend deployed successfully"
-
-  # ─── Notifikasi hasil ─────────────────────────────────────────────
-  notify:
-    name: Notify result
-    needs: [deploy-backend, deploy-frontend]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Report status
-        run: |
-          BACKEND="${{ needs.deploy-backend.result }}"
-          FRONTEND="${{ needs.deploy-frontend.result }}"
-          echo "Backend:  ${BACKEND:-skipped}"
-          echo "Frontend: ${FRONTEND:-skipped}"
-          # Gagal jika salah satu job gagal (bukan skipped)
-          if [[ "$BACKEND" == "failure" || "$FRONTEND" == "failure" ]]; then
-            exit 1
-          fi
+            echo "✅ Deploy selesai!"
