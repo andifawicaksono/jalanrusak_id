@@ -15,6 +15,7 @@ const USER_SAFE_SELECT = {
   name: true,
   email: true,
   role: true,
+  roleInfo: true,
   phone: true,
   avatarUrl: true,
   isActive: true,
@@ -64,13 +65,17 @@ export async function register(input: RegisterInput) {
 
   const passwordHash = await hashPassword(input.password);
 
+  // Cari role Pelapor (PUBLIC) untuk di-assign ke user baru
+  const pelagorRole = await prisma.appRole.findUnique({ where: { name: 'PUBLIC' } });
+
   const user = await prisma.user.create({
     data: {
       name: input.name,
       email: input.email,
       passwordHash,
       phone: input.phone ?? null,
-      // role default PUBLIC, isActive/isVerified default dari schema
+      // role enum default PUBLIC (dari schema); roleId diisi jika tabel roles sudah ada
+      ...(pelagorRole ? { roleId: pelagorRole.id } : {}),
     },
     select: USER_SAFE_SELECT,
   });

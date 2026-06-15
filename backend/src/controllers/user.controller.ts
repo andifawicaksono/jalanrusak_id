@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Role } from '@prisma/client';
 import * as userService from '../services/user.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../types';
@@ -67,6 +68,30 @@ export async function updateAvatar(req: AuthRequest, res: Response): Promise<voi
 
   const updated = await userService.updateAvatar(targetId, avatarUrl);
   sendSuccess(res, updated, 'Avatar berhasil diupdate');
+}
+
+/**
+ * PATCH /api/v1/users/:id/role
+ * Ganti role user — hanya ADMIN.
+ * Body: { role: 'PUBLIC' | 'VERIFIER' | 'ADMIN' }
+ */
+export async function changeUserRole(req: AuthRequest, res: Response): Promise<void> {
+  const targetId = req.params['id'] as string;
+  const { role } = req.body as { role: string };
+
+  const VALID_ROLES: string[] = ['PUBLIC', 'VERIFIER', 'ADMIN'];
+  if (!role || !VALID_ROLES.includes(role)) {
+    sendError(res, 'Role tidak valid. Pilih: PUBLIC, VERIFIER, atau ADMIN', 400);
+    return;
+  }
+
+  const updated = await userService.changeUserRole(targetId, role as Role);
+  if (!updated) {
+    sendError(res, 'User tidak ditemukan', 404);
+    return;
+  }
+
+  sendSuccess(res, updated, 'Role user berhasil diubah');
 }
 
 /**

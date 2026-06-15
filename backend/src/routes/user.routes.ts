@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as userController from '../controllers/user.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { uploadSingle } from '../middleware/upload.middleware';
 
@@ -9,20 +9,24 @@ const router = Router();
 
 // ─── Zod Schemas ──────────────────────────────────────────────────
 
-/** Schema validasi update profil (semua field opsional) */
 const updateProfileSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   phone: z.string().optional(),
 });
 
-/** Schema validasi ganti password */
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Password saat ini tidak boleh kosong'),
   newPassword: z
     .string()
     .min(8, 'Password baru minimal 8 karakter')
     .regex(/[A-Z]/, 'Password harus mengandung huruf kapital')
-    .regex(/[0-9]/, 'Password harus mengandung angka'),
+    .regex(/\d/, 'Password harus mengandung angka'),
+});
+
+const changeRoleSchema = z.object({
+  role: z.enum(['PUBLIC', 'VERIFIER', 'ADMIN'], {
+    errorMap: () => ({ message: 'Role harus salah satu dari: PUBLIC, VERIFIER, ADMIN' }),
+  }),
 });
 
 // ─── Routes ───────────────────────────────────────────────────────
@@ -31,7 +35,19 @@ const changePasswordSchema = z.object({
  * GET /api/v1/users
  * Ambil semua user — hanya ADMIN
  */
-router.get('/', authenticate, authorize('ADMIN'), userController.getUsers);
+router.get('/', authenticateToken, requireRole('ADMIN'), userController.getUsers);
+
+/**
+ * PATCH /api/v1/users/:id/role
+ * Ganti role user — hanya ADMIN
+ */
+router.patch(
+  '/:id/role',
+  authenticateToken,
+  requireRole('ADMIN'),
+  validate(changeRoleSchema),
+  userController.changeUserRole,
+);
 
 /**
  * PATCH /api/v1/users/:id
@@ -39,7 +55,7 @@ router.get('/', authenticate, authorize('ADMIN'), userController.getUsers);
  */
 router.patch(
   '/:id',
-  authenticate,
+  authenticateToken,
   validate(updateProfileSchema),
   userController.updateProfile,
 );
@@ -50,8 +66,8 @@ router.patch(
  */
 router.post(
   '/:id/avatar',
-  authenticate,
-  uploadSingle, // Upload satu foto (field 'photo')
+  authenticateToken,
+  uploadSingle,
   userController.updateAvatar,
 );
 
@@ -61,7 +77,7 @@ router.post(
  */
 router.patch(
   '/:id/password',
-  authenticate,
+  authenticateToken,
   validate(changePasswordSchema),
   userController.changePassword,
 );

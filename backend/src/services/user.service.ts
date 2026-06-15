@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -9,6 +9,7 @@ const USER_SAFE_FIELDS = {
   email: true,
   name: true,
   role: true,
+  roleInfo: true,
   avatarUrl: true,
   phone: true,
   createdAt: true,
@@ -20,7 +21,8 @@ export async function getAllUsers() {
   return prisma.user.findMany({
     select: {
       ...USER_SAFE_FIELDS,
-      _count: { select: { reports: true } }, // Tambahkan jumlah laporan tiap user
+      isActive: true,
+      _count: { select: { reports: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -69,17 +71,36 @@ export async function changePassword(
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error('User tidak ditemukan');
 
-  // Verifikasi password lama
   const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!isValid) {
     throw new Error('Password saat ini tidak sesuai');
   }
 
-  // Hash password baru sebelum disimpan
   const hashedNew = await bcrypt.hash(newPassword, 12);
 
   await prisma.user.update({
     where: { id: userId },
     data: { passwordHash: hashedNew },
+  });
+}
+
+/**
+ * Ganti role user — hanya bisa dilakukan oleh ADMIN.
+ * Mengupdate dua kolom sekaligus: role (enum) dan roleId (FK ke tabel roles).
+ */
+export async function changeUserRole(userId: string, newRole: Role) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) return null;
+
+  // Cari RoleDefinition yang sesuai agar FK role_id tetap sinkron
+  const roleDefinition = await prisma.appRole.findUnique({ where: { name: newRole } });
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      role: newRole,
+      roleId: roleDefinition?.id ?? null,
+    },
+    select: USER_SAFE_FIELDS,
   });
 }
