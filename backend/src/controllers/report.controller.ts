@@ -274,6 +274,41 @@ export async function updateReport(req: AuthRequest, res: Response): Promise<voi
   }
 }
 
+// ─── deleteReport ─────────────────────────────────────────────────
+
+/**
+ * DELETE /api/v1/reports/:id
+ * Auth: pemilik laporan atau ADMIN
+ */
+export async function deleteReport(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params['id'] as string;
+
+  if (!z.string().uuid().safeParse(id).success) {
+    res.status(400).json({ error: 'ID laporan tidak valid' });
+    return;
+  }
+
+  try {
+    const report = await reportService.getReportById(id);
+    if (!report) {
+      res.status(404).json({ error: 'Laporan tidak ditemukan' });
+      return;
+    }
+
+    const { userId, role } = req.user!;
+    if (report.userId !== userId && role !== 'ADMIN') {
+      res.status(403).json({ error: 'Tidak diizinkan: hanya pemilik laporan atau admin yang dapat menghapus' });
+      return;
+    }
+
+    await reportService.deleteReport(id);
+    res.json({ message: 'Laporan berhasil dihapus' });
+  } catch (error) {
+    console.error('[deleteReport]', error);
+    res.status(500).json({ error: 'Gagal menghapus laporan' });
+  }
+}
+
 // ─── getMapMarkers ────────────────────────────────────────────────
 
 /**
