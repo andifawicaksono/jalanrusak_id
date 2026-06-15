@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Crosshair, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -61,8 +61,10 @@ interface Props {
 
 export default function LocationPicker({ defaultValues, onNext }: Props) {
   const mapRef = useRef<L.Map | null>(null);
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const [isGeolocating, setIsGeolocating] = useState(false);
+  const [isGeocoding,    setIsGeocoding]    = useState(false);
+  const [isGeolocating,  setIsGeolocating]  = useState(false);
+  // Auto-geolocate only when opening a fresh form (no coords pre-set)
+  const [initLocating,   setInitLocating]   = useState(() => defaultValues.latitude === null);
 
   const {
     register,
@@ -136,6 +138,30 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
     );
   }, [handleLocationSelect]);
 
+  // Auto-geolocate on mount untuk form baru (belum ada koordinat)
+  useEffect(() => {
+    if (!initLocating) return;
+    if (!navigator.geolocation) { setInitLocating(false); return; }
+
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { latitude, longitude } }) => {
+        if (cancelled) return;
+        setValue('latitude',  latitude,  { shouldValidate: true });
+        setValue('longitude', longitude, { shouldValidate: true });
+        void reverseGeocode(latitude, longitude);
+        // setView (tanpa animasi) agar peta langsung ke posisi user
+        mapRef.current?.setView([latitude, longitude], 17);
+        setInitLocating(false);
+      },
+      () => { if (!cancelled) setInitLocating(false); },
+      { enableHighAccuracy: true, timeout: 8_000 },
+    );
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // hanya saat mount — setValue & reverseGeocode stabil
+
   return (
     <form onSubmit={handleSubmit(onNext)} className="space-y-5">
       {/* Peta */}
@@ -154,6 +180,15 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
         )}
 
         <div className="relative h-72 rounded-2xl overflow-hidden border border-slate-700">
+          {/* Overlay loading saat auto-geolokasi pertama kali */}
+          {initLocating && (
+            <div className="absolute inset-0 z-[1001] bg-slate-900/75 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+              <span className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-slate-200 font-medium">Mendeteksi lokasi Anda...</p>
+              <p className="text-xs text-slate-400">Mohon izinkan akses lokasi di browser</p>
+            </div>
+          )}
+
           <MapContainer
             center={lat && lng ? [lat, lng] : [-6.2088, 106.8456]}
             zoom={lat && lng ? 16 : 12}
