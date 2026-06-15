@@ -523,6 +523,131 @@ export async function deleteReport(id: string) {
   await prisma.report.delete({ where: { id } });
 }
 
+// ─── updateReport ────────────────────────────────────────────────
+
+export interface UpdateReportInput {
+  reportId:      string;
+  requesterId:   string;
+  requesterRole: string;
+  title:         string;
+  description:   string;
+  latitude:      number;
+  longitude:     number;
+  address:       string;
+  roadName?:     string;
+  damageType:    DamageType;
+  severity:      number;
+  keepPhotoIds:  string[];
+  newFiles:      UploadedFile[];
+}
+
+const BLOCKED_UPDATE_STATUSES = new Set<ReportStatus>(['VERIFIED', 'RESOLVED']);
+
+/**
+ * Update laporan oleh pemilik atau ADMIN.
+ * - Diblokir jika status sudah VERIFIED atau RESOLVED.
+ * - Foto: IDs dalam keepPhotoIds tetap, sisanya dihapus; newFiles ditambahkan.
+ * - Minimal 1 foto harus tersisa setelah update.
+ */
+export async function updateReport(input: UpdateReportInput) {
+  const {
+    reportId, requesterId, requesterRole,
+    title, description, latitude, longitude, address, roadName,
+    damageType, severity, keepPhotoIds, newFiles,
+  } = input;
+
+  const report = await prisma.report.findUnique({
+    where:  { id: reportId },
+    select: {
+      id:     true,
+      userId: true,
+      status: true,
+      photos: { select: { id: true, storagePath: true } },
+    },
+  });
+
+  if (!report) throw new Error('Laporan tidak ditemukan');
+
+  if (report.userId !== requesterId && requesterRole !== 'ADMIN') {
+    throw new Error('Tidak diizinkan: hanya pemilik laporan atau admin yang dapat mengedit');
+  }
+
+  if (BLOCKED_UPDATE_STATUSES.has(report.status)) {
+    throw new Error(`Laporan dengan status ${report.status} tidak dapat diubah`);
+  }
+
+  const photosToDelete = report.photos.filter((p) => !keepPhotoIds.includes(p.id));
+  const keptCount      = report.photos.length - photosToDelete.length;
+  if (keptCount + newFiles.length === 0) {
+    throw new Error('Laporan harus memiliki minimal 1 foto');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const damageTypeDb = damageType.toLowerCase();
+    await tx.$queryRaw(Prisma.sql`
+      UPDATE road_reports SET
+        title       = ${title},
+        description = ${description},
+        latitude    = ${latitude}::float8,
+        longitude   = ${longitude}::float8,
+        address     = ${address},
+        road_name   = ${roadName ?? null},
+        damage_type = ${damageTypeDb}::damage_type,
+        severity    = ${severity}::int4,
+        location    = ST_SetSRID(ST_MakePoint(${longitude}::float8, ${latitude}::float8), 4326)
+      WHERE id = ${reportId}::uuid
+    `);
+
+    if (photosToDelete.length > 0) {
+      await tx.photo.deleteMany({
+        where: { id: { in: photosToDelete.map((p) => p.id) } },
+      });
+    }
+
+    if (newFiles.length > 0) {
+      const existingCount = await tx.photo.count({ where: { reportId } });
+      await tx.photo.createMany({
+        data: newFiles.map((file, idx) => ({
+          reportId,
+          url:         file.path,
+          storagePath: file.filename,
+          filename:    file.originalname,
+          fileSize:    file.size,
+          mimeType:    file.mimetype,
+          orderIndex:  existingCount + idx,
+          isPrimary:   existingCount === 0 && idx === 0,
+        })),
+      });
+    }
+
+    // Ensure at least one primary photo exists
+    const primaryCount = await tx.photo.count({ where: { reportId, isPrimary: true } });
+    if (primaryCount === 0) {
+      const first = await tx.photo.findFirst({
+        where:   { reportId },
+        orderBy: { orderIndex: 'asc' },
+        select:  { id: true },
+      });
+      if (first) {
+        await tx.photo.update({ where: { id: first.id }, data: { isPrimary: true } });
+      }
+    }
+  });
+
+  // Delete files from storage after DB commit — best-effort
+  await Promise.allSettled(
+    photosToDelete.map((p) =>
+      p.storagePath
+        ? storageProvider.delete(p.storagePath).catch((err: unknown) => {
+            console.warn(`Gagal hapus foto (${p.storagePath}):`, err);
+          })
+        : Promise.resolve(),
+    ),
+  );
+
+  return fetchReportDetail(reportId);
+}
+
 // ─── Internal Helper ──────────────────────────────────────────────
 
 /**

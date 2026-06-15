@@ -62,4 +62,17 @@ router.patch(
   reportController.updateReportStatus,
 );
 
+/**
+ * PATCH /api/v1/reports/:id
+ * Update konten laporan — hanya pemilik laporan atau ADMIN.
+ * Diblokir jika status VERIFIED atau RESOLVED.
+ * Multipart: field 'photos' (0–5 gambar baru), keepPhotoIds[] untuk foto yang dipertahankan.
+ */
+router.patch(
+  '/:id',
+  authenticateToken,
+  uploadReportPhotos,
+  reportController.updateReport,
+);
+
 export default router;
