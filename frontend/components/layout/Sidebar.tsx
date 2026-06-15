@@ -7,7 +7,8 @@ import {
   Settings, LogOut, Users, Map,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+import { cn, getRoleDisplayName, getRoleBadgeClass } from '@/lib/utils';
+import type { UserRole } from '@/types';
 
 // ─── Nav config ───────────────────────────────────────────────────────
 
@@ -15,52 +16,17 @@ interface NavItem {
   readonly href: string;
   readonly label: string;
   readonly icon: React.ElementType;
-  /** Hanya tampilkan jika user memiliki salah satu role ini */
-  readonly roles?: ('PUBLIC' | 'VERIFIER' | 'ADMIN')[];
+  readonly roles?: UserRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    href:  '/dashboard',
-    label: 'Dashboard',
-    icon:  LayoutDashboard,
-    roles: ['ADMIN', 'VERIFIER'],
-  },
-  {
-    href:  '/reports',
-    label: 'Laporan Saya',
-    icon:  FileText,
-  },
-  {
-    href:  '/reports/new',
-    label: 'Buat Laporan',
-    icon:  Plus,
-  },
-  {
-    href:  '/map',
-    label: 'Peta',
-    icon:  Map,
-  },
-  {
-    href:  '/users',
-    label: 'Kelola User',
-    icon:  Users,
-    roles: ['ADMIN'],
-  },
-  {
-    href:  '/settings',
-    label: 'Pengaturan',
-    icon:  Settings,
-  },
+  { href: '/dashboard',   label: 'Dashboard',    icon: LayoutDashboard, roles: ['ADMIN', 'VERIFIER'] },
+  { href: '/reports',     label: 'Laporan Saya', icon: FileText },
+  { href: '/reports/new', label: 'Buat Laporan', icon: Plus },
+  { href: '/map',         label: 'Peta',         icon: Map },
+  { href: '/users',       label: 'Kelola User',  icon: Users, roles: ['ADMIN'] },
+  { href: '/settings',    label: 'Pengaturan',   icon: Settings },
 ];
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function getRoleBadgeClass(role: string): string {
-  if (role === 'ADMIN')    return 'bg-purple-100 text-purple-700';
-  if (role === 'VERIFIER') return 'bg-blue-100 text-blue-700';
-  return 'bg-gray-100 text-gray-600';
-}
 
 // ─── Component ────────────────────────────────────────────────────────
 
@@ -80,25 +46,29 @@ export default function Sidebar() {
     router.push('/');
   }
 
+  const roleLabel = user
+    ? (user.roleInfo?.displayName ?? getRoleDisplayName(user.role))
+    : null;
+
   return (
-    <aside className="w-64 min-h-screen md:min-h-0 md:h-screen border-r bg-card flex flex-col sticky top-0">
+    <aside className="w-64 min-h-screen md:min-h-0 md:h-screen border-r border-slate-800 bg-slate-900 flex flex-col sticky top-0">
       {/* Logo */}
-      <div className="p-5 border-b">
+      <div className="p-5 border-b border-slate-800">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 font-bold text-lg text-slate-100 hover:opacity-80 transition-opacity"
         >
-          <MapPin className="h-5 w-5 text-primary shrink-0" />
+          <MapPin className="h-5 w-5 text-blue-400 shrink-0" />
           <span>JalanRusak</span>
         </Link>
-        {user && (
+        {user && roleLabel && (
           <span
             className={cn(
-              'mt-1.5 inline-block text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full',
+              'mt-1.5 inline-block text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full border',
               getRoleBadgeClass(user.role),
             )}
           >
-            {user.role}
+            {roleLabel}
           </span>
         )}
       </div>
@@ -117,8 +87,8 @@ export default function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                 isActive
-                  ? 'bg-primary text-primary-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'bg-blue-600 text-white font-medium'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -129,20 +99,19 @@ export default function Sidebar() {
       </nav>
 
       {/* User Info + Logout */}
-      <div className="p-3 border-t">
+      <div className="p-3 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-2 px-2 py-1.5 rounded-lg">
-          {/* Avatar */}
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+          <div className="h-8 w-8 rounded-full bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
             {user?.name?.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate leading-tight">{user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate leading-tight">{user?.email}</p>
+            <p className="text-sm font-medium text-slate-100 truncate leading-tight">{user?.name}</p>
+            <p className="text-xs text-slate-500 truncate leading-tight">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           Keluar
