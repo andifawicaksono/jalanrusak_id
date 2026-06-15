@@ -75,4 +75,14 @@ router.patch(
   reportController.updateReport,
 );
 
+/**
+ * DELETE /api/v1/reports/:id
+ * Hapus laporan beserta semua fotonya — hanya pemilik laporan atau ADMIN.
+ */
+router.delete(
+  '/:id',
+  authenticateToken,
+  reportController.deleteReport,
+);
+
 export default router;
