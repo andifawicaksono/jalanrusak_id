@@ -8,7 +8,7 @@ import 'react-leaflet-cluster/lib/assets/MarkerCluster.Default.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, ZoomControl, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Crosshair, MapPin, X } from 'lucide-react';
 
@@ -100,9 +100,11 @@ interface MapViewProps {
 }
 
 export default function MapView({ initialMarkers, className = 'h-full w-full' }: MapViewProps) {
-  const [leafletMap, setLeafletMap] = useState<L.Map | null>(null);
-  const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
-  const [clickLocation, setClickLocation] = useState<L.LatLng | null>(null);
+  const [leafletMap,        setLeafletMap]        = useState<L.Map | null>(null);
+  const [selectedMarker,    setSelectedMarker]    = useState<MapMarker | null>(null);
+  const [clickLocation,     setClickLocation]     = useState<L.LatLng | null>(null);
+  const [isAutoGeolocating, setIsAutoGeolocating] = useState(false);
+  const autoGeolocateDone = useRef(false);
 
   const { markers, isLoading, filters, updateFilters, updateBbox } = useMapData({
     initialBbox:    INITIAL_BBOX,
@@ -123,6 +125,32 @@ export default function MapView({ initialMarkers, className = 'h-full w-full' }:
       setClickLocation(latlng);
     }
   }, [selectedMarker]);
+
+  // Auto-geolocate sekali saat peta pertama kali siap
+  useEffect(() => {
+    if (!leafletMap || autoGeolocateDone.current) return;
+    autoGeolocateDone.current = true;
+
+    if (!navigator.geolocation) return;
+
+    setIsAutoGeolocating(true);
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        leafletMap.flyTo([pos.coords.latitude, pos.coords.longitude], 14, {
+          animate: true,
+          duration: 1.5,
+        });
+        setIsAutoGeolocating(false);
+      },
+      () => { if (!cancelled) setIsAutoGeolocating(false); },
+      { enableHighAccuracy: false, timeout: 6_000 },
+    );
+
+    return () => { cancelled = true; };
+  }, [leafletMap]);
 
   const handleGeolocate = useCallback(() => {
     if (!navigator.geolocation || !leafletMap) return;
@@ -195,10 +223,12 @@ export default function MapView({ initialMarkers, className = 'h-full w-full' }:
       )}
 
       {/* ── Indikator loading (atas tengah) ── */}
-      {isLoading && (
+      {(isAutoGeolocating || isLoading) && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 backdrop-blur-sm border border-slate-700">
           <span className="h-3.5 w-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
-          <span className="text-xs text-slate-300 font-medium">Memuat marker...</span>
+          <span className="text-xs text-slate-300 font-medium">
+            {isAutoGeolocating ? 'Mendeteksi lokasi...' : 'Memuat marker...'}
+          </span>
         </div>
       )}
 
