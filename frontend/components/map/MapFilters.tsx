@@ -22,7 +22,7 @@ interface Props {
 function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{title}</p>
+      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
       {children}
     </div>
   );
@@ -81,29 +81,29 @@ export default function MapFilters({ filters, onChange, count }: Props) {
       <button
         onClick={() => setIsOpen((v) => !v)}
         className={cn(
-          'flex items-center gap-2 w-full bg-white rounded-xl shadow-lg px-3 py-2.5',
-          'hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700',
-          isOpen && 'rounded-b-none shadow-none border-b border-gray-100',
+          'flex items-center gap-2 w-full bg-slate-900 rounded-xl shadow-lg px-3 py-2.5',
+          'hover:bg-slate-800 transition-colors text-sm font-medium text-slate-200 border border-slate-700',
+          isOpen && 'rounded-b-none shadow-none border-b-0',
         )}
       >
-        <Filter className="h-4 w-4 text-gray-500 shrink-0" />
+        <Filter className="h-4 w-4 text-slate-400 shrink-0" />
         <span className="flex-1 text-left">Filter</span>
         {hasActiveFilter && (
-          <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+          <span className="h-2 w-2 rounded-full bg-blue-400 shrink-0" />
         )}
-        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full shrink-0">
+        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full shrink-0">
           {count}
         </span>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
+          <ChevronUp className="h-4 w-4 text-slate-500 shrink-0" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+          <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
         )}
       </button>
 
       {/* Panel */}
       {isOpen && (
-        <div className="bg-white rounded-b-xl rounded-tr-xl shadow-lg border-t border-gray-100 p-3 space-y-4">
+        <div className="bg-slate-900 border border-slate-700 border-t-0 rounded-b-xl rounded-tr-xl shadow-lg p-3 space-y-4">
 
           {/* Jenis kerusakan */}
           <FilterSection title="Jenis Kerusakan">
@@ -111,7 +111,7 @@ export default function MapFilters({ filters, onChange, count }: Props) {
               {ALL_DAMAGE_TYPES.map((type) => (
                 <label
                   key={type}
-                  className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900 select-none"
+                  className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-slate-100 select-none"
                 >
                   <input
                     type="checkbox"
@@ -129,7 +129,7 @@ export default function MapFilters({ filters, onChange, count }: Props) {
           <FilterSection title="Keparahan">
             <div className="space-y-2.5">
               <div className="space-y-1">
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-slate-400">
                   <span>Min</span>
                   <span
                     className="font-medium"
@@ -150,7 +150,7 @@ export default function MapFilters({ filters, onChange, count }: Props) {
                 />
               </div>
               <div className="space-y-1">
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-slate-400">
                   <span>Max</span>
                   <span
                     className="font-medium"
@@ -179,7 +179,7 @@ export default function MapFilters({ filters, onChange, count }: Props) {
               {ALL_STATUSES.map((status) => (
                 <label
                   key={status}
-                  className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900 select-none"
+                  className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-slate-100 select-none"
                 >
                   <input
                     type="checkbox"
@@ -200,8 +200,8 @@ export default function MapFilters({ filters, onChange, count }: Props) {
             className={cn(
               'flex items-center justify-center gap-1.5 w-full text-xs font-medium py-1.5 rounded-lg transition-colors',
               hasActiveFilter
-                ? 'text-red-600 hover:bg-red-50'
-                : 'text-gray-300 cursor-not-allowed',
+                ? 'text-red-400 hover:bg-red-500/10'
+                : 'text-slate-600 cursor-not-allowed',
             )}
           >
             <RotateCcw className="h-3.5 w-3.5" />

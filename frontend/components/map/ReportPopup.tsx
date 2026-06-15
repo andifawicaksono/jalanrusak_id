@@ -19,13 +19,13 @@ const fetcher = (url: string) =>
 function Skeleton() {
   return (
     <div className="animate-pulse space-y-3 p-4">
-      <div className="h-36 bg-gray-200 rounded-lg" />
+      <div className="h-36 bg-slate-700 rounded-lg" />
       <div className="space-y-2">
-        <div className="h-4 bg-gray-200 rounded w-3/4" />
-        <div className="h-3 bg-gray-200 rounded w-1/2" />
-        <div className="h-3 bg-gray-200 rounded w-2/3" />
+        <div className="h-4 bg-slate-700 rounded w-3/4" />
+        <div className="h-3 bg-slate-700 rounded w-1/2" />
+        <div className="h-3 bg-slate-700 rounded w-2/3" />
       </div>
-      <div className="h-8 bg-gray-200 rounded-lg" />
+      <div className="h-8 bg-slate-700 rounded-lg" />
     </div>
   );
 }
@@ -78,7 +78,7 @@ export default function ReportPopup({ marker, onClose }: Props) {
   return (
     <div
       className={cn(
-        'bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100',
+        'bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-700',
         'transition-all duration-250 ease-out',
         visible
           ? 'opacity-100 translate-y-0'
@@ -92,13 +92,13 @@ export default function ReportPopup({ marker, onClose }: Props) {
           <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', getStatusColor(marker.status))}>
             {getStatusLabel(marker.status)}
           </span>
-          <span className="text-xs text-gray-400 font-medium">
+          <span className="text-xs text-slate-400 font-medium">
             {getDamageTypeLabel(marker.damageType)}
           </span>
         </div>
         <button
           onClick={handleClose}
-          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
           aria-label="Tutup"
         >
           <X className="h-4 w-4" />
@@ -112,7 +112,7 @@ export default function ReportPopup({ marker, onClose }: Props) {
         <div className="p-4 pt-2 space-y-3">
           {/* Foto utama */}
           {primaryPhoto && (
-            <div className="relative h-36 rounded-xl overflow-hidden bg-gray-100">
+            <div className="relative h-36 rounded-xl overflow-hidden bg-slate-700">
               <Image
                 src={primaryPhoto.url}
                 alt={report.title}
@@ -131,25 +131,25 @@ export default function ReportPopup({ marker, onClose }: Props) {
 
           {/* Info utama */}
           <div>
-            <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
+            <h3 className="font-semibold text-slate-100 text-sm leading-snug line-clamp-2">
               {report.title}
             </h3>
             {report.reportNumber && (
-              <p className="text-xs text-gray-400 mt-0.5">{report.reportNumber}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{report.reportNumber}</p>
             )}
           </div>
 
           {/* Meta: alamat + tanggal */}
           <div className="space-y-1">
-            <div className="flex items-start gap-1.5 text-xs text-gray-500">
-              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-400" />
+            <div className="flex items-start gap-1.5 text-xs text-slate-400">
+              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-500" />
               <span className="line-clamp-2">{report.address}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Calendar className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-500" />
               <span>{formatDate(report.reportedAt)}</span>
-              <span className="text-gray-300 mx-0.5">·</span>
-              <Eye className="h-3.5 w-3.5 text-gray-400" />
+              <span className="text-slate-600 mx-0.5">·</span>
+              <Eye className="h-3.5 w-3.5 text-slate-500" />
               <span>{report.viewsCount} dilihat</span>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function ReportPopup({ marker, onClose }: Props) {
           {/* CTA */}
           <Link
             href={`/reports/${report.id}`}
-            className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+            className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
           >
             <ExternalLink className="h-4 w-4" />
             Lihat Detail

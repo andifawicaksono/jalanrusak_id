@@ -155,9 +155,9 @@ export default function MapView({ initialMarkers, className = 'h-full w-full' }:
       <button
         onClick={handleGeolocate}
         title="Tampilkan lokasi saya"
-        className="absolute top-3 right-3 z-[1000] bg-white rounded-xl p-2.5 shadow-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
+        className="absolute top-3 right-3 z-[1000] bg-slate-900/95 border border-slate-700 rounded-xl p-2.5 shadow-lg hover:bg-slate-800 active:bg-slate-700 transition-colors"
       >
-        <Crosshair className="h-5 w-5 text-gray-700" />
+        <Crosshair className="h-5 w-5 text-slate-300" />
       </button>
 
       {/* ── Popup laporan (bawah tengah) ── */}
@@ -173,20 +173,20 @@ export default function MapView({ initialMarkers, className = 'h-full w-full' }:
       {/* ── Bar "Laporkan di sini" (bawah tengah, muncul saat klik peta) ── */}
       {clickLocation && !selectedMarker && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] max-w-[calc(100vw-24px)]">
-          <div className="flex items-center gap-2.5 bg-white rounded-2xl shadow-2xl px-4 py-3 border border-gray-100">
-            <MapPin className="h-4 w-4 text-blue-500 shrink-0" />
-            <code className="text-xs text-gray-500 font-mono">
+          <div className="flex items-center gap-2.5 bg-slate-900 rounded-2xl shadow-2xl px-4 py-3 border border-slate-700">
+            <MapPin className="h-4 w-4 text-blue-400 shrink-0" />
+            <code className="text-xs text-slate-400 font-mono">
               {clickLocation.lat.toFixed(5)}, {clickLocation.lng.toFixed(5)}
             </code>
             <Link
               href="/reports/new"
-              className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
             >
               Laporkan di sini
             </Link>
             <button
               onClick={() => setClickLocation(null)}
-              className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -196,9 +196,9 @@ export default function MapView({ initialMarkers, className = 'h-full w-full' }:
 
       {/* ── Indikator loading (atas tengah) ── */}
       {isLoading && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 backdrop-blur-sm">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 backdrop-blur-sm border border-slate-700">
           <span className="h-3.5 w-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
-          <span className="text-xs text-gray-600 font-medium">Memuat marker...</span>
+          <span className="text-xs text-slate-300 font-medium">Memuat marker...</span>
         </div>
       )}
 

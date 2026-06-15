@@ -140,20 +140,20 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
     <form onSubmit={handleSubmit(onNext)} className="space-y-5">
       {/* Peta */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-slate-300">
           Lokasi Kerusakan *
         </label>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500">
           Klik peta atau gunakan tombol GPS untuk menentukan lokasi
         </p>
 
         {(errors.latitude ?? errors.longitude) && (
-          <p className="text-sm text-red-600 font-medium">
+          <p className="text-sm text-red-400 font-medium">
             Pilih lokasi di peta terlebih dahulu
           </p>
         )}
 
-        <div className="relative h-72 rounded-2xl overflow-hidden border border-gray-200">
+        <div className="relative h-72 rounded-2xl overflow-hidden border border-slate-700">
           <MapContainer
             center={lat && lng ? [lat, lng] : [-6.2088, 106.8456]}
             zoom={lat && lng ? 16 : 12}
@@ -178,19 +178,19 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
             onClick={handleGeolocate}
             disabled={isGeolocating}
             title="Gunakan lokasi saya"
-            className="absolute top-3 right-3 z-[1000] bg-white rounded-xl p-2.5 shadow-lg hover:bg-gray-50 disabled:opacity-70 transition-colors"
+            className="absolute top-3 right-3 z-[1000] bg-slate-900/95 border border-slate-700 rounded-xl p-2.5 shadow-lg hover:bg-slate-800 disabled:opacity-70 transition-colors"
           >
             {isGeolocating ? (
-              <span className="h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block" />
+              <span className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
             ) : (
-              <Crosshair className="h-5 w-5 text-gray-700" />
+              <Crosshair className="h-5 w-5 text-slate-300" />
             )}
           </button>
         </div>
 
         {/* Koordinat */}
         {lat && lng && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-700/50">
             <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0" />
             <code className="font-mono">{lat.toFixed(6)}, {lng.toFixed(6)}</code>
             {isGeocoding && (
@@ -202,7 +202,7 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
 
       {/* Alamat */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-slate-300">
           Alamat / Deskripsi Lokasi *
         </label>
         <textarea
@@ -211,33 +211,34 @@ export default function LocationPicker({ defaultValues, onNext }: Props) {
           placeholder="Contoh: Jl. Gatot Subroto, depan RSUD Kab. X, Kecamatan Y..."
           className={cn(
             'w-full px-3 py-2.5 rounded-xl border text-sm resize-none',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0',
-            errors.address ? 'border-red-400' : 'border-gray-300',
+            'bg-slate-800/60 text-slate-100 placeholder:text-slate-500',
+            'focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-0',
+            errors.address ? 'border-red-500' : 'border-slate-700',
           )}
         />
         {errors.address && (
-          <p className="text-xs text-red-600">{errors.address.message}</p>
+          <p className="text-xs text-red-400">{errors.address.message}</p>
         )}
       </div>
 
       {/* Nama Jalan (opsional) */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-slate-300">
           Nama Jalan{' '}
-          <span className="font-normal text-gray-400">(opsional)</span>
+          <span className="font-normal text-slate-500">(opsional)</span>
         </label>
         <input
           {...register('roadName')}
           type="text"
           placeholder="Contoh: Jl. Gatot Subroto"
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+          className="w-full px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-0"
         />
       </div>
 
       {/* Submit */}
       <button
         type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors"
+        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors"
       >
         Lanjutkan ke Detail Kerusakan →
       </button>

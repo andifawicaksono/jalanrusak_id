@@ -1,13 +1,24 @@
 // ─── Auth Types ───────────────────────────────────────────────────
 
+export type UserRole = 'PUBLIC' | 'VERIFIER' | 'ADMIN';
+
+export interface RoleInfo {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'PUBLIC' | 'VERIFIER' | 'ADMIN';
+  role: UserRole;
+  roleInfo?: RoleInfo | null;
   avatar?: string | null;
   avatarUrl?: string | null;
   phone?: string | null;
+  isActive?: boolean | null;
   createdAt: string;
 }
 
@@ -74,9 +85,20 @@ export interface Report {
   updatedAt: string;
 }
 
+/** Entry riwayat perubahan status laporan */
+export interface StatusHistoryEntry {
+  id: string;
+  oldStatus: ReportStatus | null;
+  newStatus: ReportStatus;
+  notes: string | null;
+  changedAt: string;
+  user: { id: string; name: string; role: string } | null;
+}
+
 /** Detail laporan lengkap — dari endpoint GET /reports/:id */
 export interface ReportDetail {
   id: string;
+  userId: string;
   reportNumber: string;
   title: string;
   description: string;
@@ -94,6 +116,7 @@ export interface ReportDetail {
   photos: ReportPhoto[];
   user: { id: string; name: string; avatarUrl: string | null } | null;
   region: { id: number; name: string; level: string } | null;
+  statusHistory: StatusHistoryEntry[];
 }
 
 /** Data yang diperlukan untuk membuat laporan baru */

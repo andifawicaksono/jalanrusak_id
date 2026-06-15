@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { DamageType, ReportStatus } from '@/types';
+import { DamageType, ReportStatus, UserRole } from '@/types';
 
 /**
  * Gabungkan Tailwind class names dengan aman.
@@ -42,14 +42,14 @@ export function getStatusLabel(status: ReportStatus): string {
   return labels[status];
 }
 
-/** Kembalikan warna Tailwind CSS untuk badge status laporan */
+/** Kembalikan warna Tailwind CSS untuk badge status laporan (dark-mode) */
 export function getStatusColor(status: ReportStatus): string {
   const colors: Record<ReportStatus, string> = {
-    PENDING: 'bg-yellow-100 text-yellow-800',
-    VERIFIED: 'bg-blue-100 text-blue-800',
-    IN_PROGRESS: 'bg-orange-100 text-orange-800',
-    RESOLVED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    PENDING:     'bg-amber-500/20 text-amber-300',
+    VERIFIED:    'bg-blue-500/20 text-blue-300',
+    IN_PROGRESS: 'bg-orange-500/20 text-orange-300',
+    RESOLVED:    'bg-green-500/20 text-green-300',
+    REJECTED:    'bg-red-500/20 text-red-300',
   };
   return colors[status];
 }
@@ -80,6 +80,23 @@ export function getSeverityMapColor(severity: number): string {
   if (severity === 3) return '#eab308'; // yellow-500
   if (severity === 4) return '#f97316'; // orange-500
   return '#ef4444'; // red-500
+}
+
+/** Kembalikan nama tampilan role yang ramah untuk pengguna */
+export function getRoleDisplayName(role: UserRole): string {
+  const names: Record<UserRole, string> = {
+    PUBLIC:   'Pelapor',
+    VERIFIER: 'Admin Verifikator',
+    ADMIN:    'Super Admin',
+  };
+  return names[role];
+}
+
+/** Kembalikan class Tailwind untuk badge role (dark-mode) */
+export function getRoleBadgeClass(role: UserRole): string {
+  if (role === 'ADMIN')    return 'bg-purple-500/15 text-purple-400 border-purple-500/20';
+  if (role === 'VERIFIER') return 'bg-blue-500/15 text-blue-400 border-blue-500/20';
+  return 'bg-slate-700/50 text-slate-400 border-slate-600/50';
 }
 
 /** Label keparahan untuk form pembuatan laporan (skala tindakan darurat) */

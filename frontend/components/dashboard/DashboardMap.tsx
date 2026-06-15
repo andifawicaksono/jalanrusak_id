@@ -77,7 +77,7 @@ function BoundsCapture({ onBoundsChange }: { onBoundsChange: (b: BoundingBox) =>
 // ─── SWR Fetcher ─────────────────────────────────────────────────
 
 const fetcher = (key: string) =>
-  apiClient.get<{ markers: MapMarker[] }>(key).then((r) => r.data.markers);
+  apiClient.get<{ markers: MapMarker[]; total: number }>(key).then((r) => r.data);
 
 // ─── Main Component ───────────────────────────────────────────────
 
@@ -97,10 +97,11 @@ export default function DashboardMap({ className }: DashboardMapProps) {
   });
 
   const swrKey = `/reports/map-markers?swLat=${bbox.swLat}&swLng=${bbox.swLng}&neLat=${bbox.neLat}&neLng=${bbox.neLng}`;
-  const { data: markers = [], isLoading } = useSWR(swrKey, fetcher, {
+  const { data, isLoading } = useSWR(swrKey, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval:  20_000,
   });
+  const markers = data?.markers ?? [];
 
   const handleBoundsChange = useCallback((b: BoundingBox) => setBbox(b), []);
 
@@ -115,7 +116,7 @@ export default function DashboardMap({ className }: DashboardMapProps) {
   return (
     <div className={cn('relative', className)}>
       {/* ── Toggle view mode ── */}
-      <div className="absolute top-3 right-3 z-[1000] flex rounded-lg overflow-hidden border bg-white shadow-md">
+      <div className="absolute top-3 right-3 z-[1000] flex rounded-lg overflow-hidden border border-slate-700 bg-slate-900 shadow-md">
         <button
           onClick={() => setViewMode('markers')}
           className={cn(
@@ -146,14 +147,14 @@ export default function DashboardMap({ className }: DashboardMapProps) {
 
       {/* ── Loading indicator ── */}
       {isLoading && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 rounded-full px-3 py-1.5 text-xs font-medium text-gray-600 shadow flex items-center gap-2">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 rounded-full px-3 py-1.5 text-xs font-medium text-slate-300 shadow flex items-center gap-2">
           <span className="h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
           Memuat marker...
         </div>
       )}
 
       {/* ── Marker count ── */}
-      <div className="absolute bottom-8 left-3 z-[1000] bg-white/90 rounded-lg px-2.5 py-1 text-xs font-medium text-gray-600 shadow">
+      <div className="absolute bottom-8 left-3 z-[1000] bg-slate-900/90 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-400 shadow">
         {markers.length} titik kerusakan
       </div>
 

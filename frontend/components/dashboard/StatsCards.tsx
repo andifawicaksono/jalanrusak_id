@@ -38,7 +38,7 @@ function useCountUp(target: number, duration = 800) {
     const start = performance.now();
     const animate = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.round(eased * target));
       if (progress < 1) { frame = requestAnimationFrame(animate); }
     };
@@ -67,7 +67,7 @@ function StatCard({
   const animated = useCountUp(value, 800 + delay);
 
   return (
-    <div className="bg-card border rounded-xl p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4 hover:border-slate-700 hover:shadow-lg hover:shadow-slate-900/50 transition-all">
       <div className={cn('p-3 rounded-xl shrink-0', iconBg)}>
         <Icon className={cn('h-5 w-5', iconColor)} />
       </div>
@@ -75,7 +75,7 @@ function StatCard({
         <p className={cn('text-2xl font-bold tabular-nums', valuColor)}>
           {animated.toLocaleString('id-ID')}
         </p>
-        <p className="text-sm text-muted-foreground truncate">{label}</p>
+        <p className="text-sm text-slate-500 truncate">{label}</p>
       </div>
     </div>
   );
@@ -84,54 +84,12 @@ function StatCard({
 // ─── Config ──────────────────────────────────────────────────────────
 
 const STAT_CONFIGS: StatCardConfig[] = [
-  {
-    key:        'total',
-    label:      'Total Laporan',
-    Icon:       AlertTriangle,
-    iconBg:     'bg-blue-100',
-    iconColor:  'text-blue-600',
-    valuColor:  'text-blue-700',
-  },
-  {
-    key:        'pending',
-    label:      'Menunggu Verifikasi',
-    Icon:       Clock,
-    iconBg:     'bg-yellow-100',
-    iconColor:  'text-yellow-600',
-    valuColor:  'text-yellow-700',
-  },
-  {
-    key:        'inProgress',
-    label:      'Sedang Diproses',
-    Icon:       TrendingUp,
-    iconBg:     'bg-orange-100',
-    iconColor:  'text-orange-600',
-    valuColor:  'text-orange-700',
-  },
-  {
-    key:        'resolved',
-    label:      'Selesai Diperbaiki',
-    Icon:       CheckCircle2,
-    iconBg:     'bg-green-100',
-    iconColor:  'text-green-600',
-    valuColor:  'text-green-700',
-  },
-  {
-    key:        'rejected',
-    label:      'Ditolak',
-    Icon:       XCircle,
-    iconBg:     'bg-red-100',
-    iconColor:  'text-red-500',
-    valuColor:  'text-red-600',
-  },
-  {
-    key:        'critical',
-    label:      'Kondisi Kritis',
-    Icon:       Zap,
-    iconBg:     'bg-rose-100',
-    iconColor:  'text-rose-600',
-    valuColor:  'text-rose-700',
-  },
+  { key: 'total',      label: 'Total Laporan',        Icon: AlertTriangle, iconBg: 'bg-blue-500/15',   iconColor: 'text-blue-400',   valuColor: 'text-blue-400'   },
+  { key: 'pending',    label: 'Menunggu Verifikasi',   Icon: Clock,         iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-400', valuColor: 'text-yellow-400' },
+  { key: 'inProgress', label: 'Sedang Diproses',       Icon: TrendingUp,    iconBg: 'bg-orange-500/15', iconColor: 'text-orange-400', valuColor: 'text-orange-400' },
+  { key: 'resolved',   label: 'Selesai Diperbaiki',    Icon: CheckCircle2,  iconBg: 'bg-green-500/15',  iconColor: 'text-green-400',  valuColor: 'text-green-400'  },
+  { key: 'rejected',   label: 'Ditolak',               Icon: XCircle,       iconBg: 'bg-red-500/15',    iconColor: 'text-red-400',    valuColor: 'text-red-400'    },
+  { key: 'critical',   label: 'Kondisi Kritis',        Icon: Zap,           iconBg: 'bg-rose-500/15',   iconColor: 'text-rose-400',   valuColor: 'text-rose-400'   },
 ];
 
 // ─── Main Component ──────────────────────────────────────────────────

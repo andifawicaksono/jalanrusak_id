@@ -25,11 +25,11 @@ function SummaryRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex gap-3 py-2.5 border-b border-gray-100 last:border-0">
-      <span className="text-xs text-gray-500 font-medium w-28 shrink-0 pt-0.5">
+    <div className="flex gap-3 py-2.5 border-b border-slate-700/50 last:border-0">
+      <span className="text-xs text-slate-500 font-medium w-28 shrink-0 pt-0.5">
         {label}
       </span>
-      <div className="text-sm text-gray-800 leading-snug">{children}</div>
+      <div className="text-sm text-slate-200 leading-snug">{children}</div>
     </div>
   );
 }
@@ -37,12 +37,12 @@ function SummaryRow({
 // ─── Props ───────────────────────────────────────────────────────────
 
 interface Props {
-  location: LocationState;
-  damage: DamageState;
-  photos: File[];
-  primaryPhotoIndex: number;
-  onBack: () => void;
-  onSuccess: () => void;
+  readonly location: LocationState;
+  readonly damage: DamageState;
+  readonly photos: File[];
+  readonly primaryPhotoIndex: number;
+  readonly onBack: () => void;
+  readonly onSuccess: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -61,7 +61,6 @@ export default function ReportConfirm({
   } | null>(null);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  // Buat preview URL untuk foto utama di summary
   useEffect(() => {
     const urls = photos.map((f) => URL.createObjectURL(f));
     setPreviews(urls);
@@ -125,7 +124,7 @@ export default function ReportConfirm({
         reportNumber: res.data.report.reportNumber,
       });
       setIsSubmitting(false);
-      onSuccess(); // Reset store
+      onSuccess();
     } catch (err) {
       const msg = axios.isAxiosError(err)
         ? ((err.response?.data as { error?: string })?.error ??
@@ -141,33 +140,33 @@ export default function ReportConfirm({
   // ── Sukses ───────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-5">
-        <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 className="h-9 w-9 text-green-600" />
+      <div className="bg-slate-900 rounded-2xl border border-slate-700 p-8 text-center space-y-5">
+        <div className="h-16 w-16 bg-green-500/15 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle2 className="h-9 w-9 text-green-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Laporan Terkirim!</h2>
-          <p className="text-gray-500 text-sm mt-1">
+          <h2 className="text-xl font-bold text-slate-100">Laporan Terkirim!</h2>
+          <p className="text-slate-400 text-sm mt-1">
             Laporan Anda akan diverifikasi oleh petugas kami
           </p>
         </div>
-        <div className="bg-gray-50 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-500 mb-1">Nomor Laporan</p>
-          <p className="text-lg font-bold text-blue-700 tracking-wider font-mono">
+        <div className="bg-slate-800 rounded-xl px-4 py-3">
+          <p className="text-xs text-slate-500 mb-1">Nomor Laporan</p>
+          <p className="text-lg font-bold text-blue-400 tracking-wider font-mono">
             {submitted.reportNumber}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
             href={`/reports/${submitted.id}`}
-            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors"
           >
             <ExternalLink className="h-4 w-4" />
             Lihat Laporan
           </Link>
           <Link
             href="/dashboard"
-            className="flex-1 flex items-center justify-center border border-gray-300 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex-1 flex items-center justify-center border border-slate-700 text-slate-300 font-medium py-3 rounded-xl hover:bg-slate-800 transition-colors"
           >
             Ke Dashboard
           </Link>
@@ -183,19 +182,19 @@ export default function ReportConfirm({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-900">Konfirmasi Laporan</h2>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <h2 className="text-base font-semibold text-slate-100">Konfirmasi Laporan</h2>
+        <p className="text-xs text-slate-500 mt-0.5">
           Periksa kembali data sebelum mengirim
         </p>
       </div>
 
       {/* Kartu ringkasan */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden">
 
         {/* Foto preview mini */}
         {previews.length > 0 && (
-          <div className="p-4 border-b border-gray-100">
-            <p className="text-xs font-medium text-gray-500 mb-2.5">
+          <div className="p-4 border-b border-slate-700/50">
+            <p className="text-xs font-medium text-slate-500 mb-2.5">
               Foto ({photos.length})
             </p>
             <div className="flex gap-2">
@@ -207,8 +206,8 @@ export default function ReportConfirm({
                     className={cn(
                       'relative shrink-0 h-16 w-16 rounded-xl overflow-hidden',
                       isPrimary
-                        ? 'ring-2 ring-blue-500 ring-offset-1'
-                        : 'opacity-80',
+                        ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-900'
+                        : 'opacity-70',
                     )}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -235,18 +234,18 @@ export default function ReportConfirm({
         <div className="px-4 py-1">
           <SummaryRow label="Lokasi">
             <div className="flex items-start gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-gray-400 shrink-0 mt-0.5" />
+              <MapPin className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
               <span>{location.address}</span>
             </div>
             {location.roadName?.trim() && (
-              <p className="text-xs text-gray-500 mt-1 ml-5">
+              <p className="text-xs text-slate-500 mt-1 ml-5">
                 {location.roadName}
               </p>
             )}
           </SummaryRow>
 
           <SummaryRow label="Koordinat">
-            <code className="text-xs font-mono">
+            <code className="text-xs font-mono text-slate-300">
               {location.latitude?.toFixed(6)},{' '}
               {location.longitude?.toFixed(6)}
             </code>
@@ -274,12 +273,12 @@ export default function ReportConfirm({
             <div className="flex items-center gap-1.5">
               {damage.isAnonymous ? (
                 <>
-                  <EyeOff className="h-3.5 w-3.5 text-gray-400" />
+                  <EyeOff className="h-3.5 w-3.5 text-slate-500" />
                   <span>Anonim</span>
                 </>
               ) : (
                 <>
-                  <Eye className="h-3.5 w-3.5 text-gray-400" />
+                  <Eye className="h-3.5 w-3.5 text-slate-500" />
                   <span>Nama ditampilkan</span>
                 </>
               )}
@@ -290,9 +289,9 @@ export default function ReportConfirm({
 
       {/* Peringatan validasi */}
       {!canSubmit && (
-        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-700 space-y-1">
+        <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-300 space-y-1">
             {location.latitude === null && (
               <p>• Lokasi belum dipilih (kembali ke Langkah 1)</p>
             )}
@@ -308,7 +307,7 @@ export default function ReportConfirm({
 
       {/* Error API */}
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -317,11 +316,11 @@ export default function ReportConfirm({
       {/* Progress upload */}
       {isLoading && (
         <div className="space-y-1.5">
-          <div className="flex justify-between text-xs text-gray-600">
+          <div className="flex justify-between text-xs text-slate-400">
             <span>Mengirim laporan...</span>
             <span>{progress}%</span>
           </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
@@ -336,7 +335,7 @@ export default function ReportConfirm({
           type="button"
           onClick={onBack}
           disabled={isLoading}
-          className="flex items-center gap-1.5 px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-5 py-3 rounded-xl border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50 transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
           Kembali
@@ -348,8 +347,8 @@ export default function ReportConfirm({
           className={cn(
             'flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-colors',
             canSubmit && !isLoading
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+              : 'bg-slate-800 text-slate-500 cursor-not-allowed',
           )}
         >
           {isLoading ? (

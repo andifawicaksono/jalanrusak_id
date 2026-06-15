@@ -40,13 +40,13 @@ export default async function MapPage() {
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-white flex items-center justify-between shrink-0">
+      <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/95 backdrop-blur flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-base font-semibold text-gray-800">Peta Laporan Jalan Rusak</h1>
-          <p className="text-xs text-gray-500">Klik marker untuk detail · Klik peta untuk melaporkan</p>
+          <h1 className="text-base font-semibold text-slate-100">Peta Laporan Jalan Rusak</h1>
+          <p className="text-xs text-slate-400">Klik marker untuk detail · Klik peta untuk melaporkan</p>
         </div>
         {/* Legenda severity */}
-        <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500">
+        <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
           {SEVERITY_LEGEND.map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
               <span

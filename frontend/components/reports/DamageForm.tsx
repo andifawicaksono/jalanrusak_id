@@ -39,12 +39,12 @@ const DAMAGE_TYPES: {
   desc: string;
   Icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { value: 'BERLUBANG', label: 'Berlubang',  desc: 'Lubang pada aspal',    Icon: AlertCircle  },
-  { value: 'RETAK',     label: 'Retak',      desc: 'Retak memanjang',      Icon: Zap          },
-  { value: 'AMBLAS',    label: 'Amblas',     desc: 'Penurunan permukaan',  Icon: ChevronsDown },
-  { value: 'BANJIR',    label: 'Tergenang',  desc: 'Drainase tersumbat',   Icon: Droplets     },
-  { value: 'LONGSOR',   label: 'Longsor',    desc: 'Material menutupi jalan', Icon: Triangle  },
-  { value: 'LAINNYA',   label: 'Lainnya',    desc: 'Kerusakan lain',       Icon: HelpCircle   },
+  { value: 'BERLUBANG', label: 'Berlubang',  desc: 'Lubang pada aspal',       Icon: AlertCircle  },
+  { value: 'RETAK',     label: 'Retak',      desc: 'Retak memanjang',          Icon: Zap          },
+  { value: 'AMBLAS',    label: 'Amblas',     desc: 'Penurunan permukaan',      Icon: ChevronsDown },
+  { value: 'BANJIR',    label: 'Tergenang',  desc: 'Drainase tersumbat',       Icon: Droplets     },
+  { value: 'LONGSOR',   label: 'Longsor',    desc: 'Material menutupi jalan',  Icon: Triangle     },
+  { value: 'LAINNYA',   label: 'Lainnya',    desc: 'Kerusakan lain',           Icon: HelpCircle   },
 ];
 
 const SEVERITY_CONFIG = [
@@ -55,27 +55,28 @@ const SEVERITY_CONFIG = [
   { value: 5, label: 'Darurat', hex: '#ef4444' },
 ];
 
+// ─── Shared input class ───────────────────────────────────────────────
+
+const inputBase =
+  'w-full bg-slate-800/60 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors';
+
 // ─── Props ───────────────────────────────────────────────────────────
 
 interface DamageFormProps {
-  defaultValues: {
-    title: string;
-    description: string;
-    damageType: DamageType | null;
-    severity: number;
-    isAnonymous: boolean;
+  readonly defaultValues: {
+    readonly title: string;
+    readonly description: string;
+    readonly damageType: DamageType | null;
+    readonly severity: number;
+    readonly isAnonymous: boolean;
   };
-  onNext: (data: DamageFormData) => void;
-  onBack: () => void;
+  readonly onNext: (data: DamageFormData) => void;
+  readonly onBack: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export default function DamageForm({
-  defaultValues,
-  onNext,
-  onBack,
-}: DamageFormProps) {
+export default function DamageForm({ defaultValues, onNext, onBack }: DamageFormProps) {
   const {
     register,
     control,
@@ -94,21 +95,21 @@ export default function DamageForm({
     },
   });
 
-  const severity      = watch('severity');
-  const selectedType  = watch('damageType');
-  const descLength    = watch('description')?.length ?? 0;
-  const severityConf  = SEVERITY_CONFIG[severity - 1];
+  const severity     = watch('severity');
+  const selectedType = watch('damageType');
+  const descLength   = watch('description')?.length ?? 0;
+  const severityConf = SEVERITY_CONFIG[severity - 1];
 
   return (
     <form onSubmit={handleSubmit(onNext)} className="space-y-6">
 
       {/* ── Jenis Kerusakan ── */}
       <div className="space-y-2.5">
-        <label className="text-sm font-medium text-gray-700 block">
+        <label className="text-sm font-medium text-slate-300 block">
           Jenis Kerusakan *
         </label>
         {errors.damageType && (
-          <p className="text-xs text-red-600">{errors.damageType.message}</p>
+          <p className="text-xs text-red-400">{errors.damageType.message}</p>
         )}
         <div className="grid grid-cols-3 gap-2.5">
           {DAMAGE_TYPES.map(({ value, label, desc, Icon }) => {
@@ -121,25 +122,15 @@ export default function DamageForm({
                 className={cn(
                   'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all',
                   active
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300',
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-slate-700 bg-slate-800/40 hover:border-slate-600',
                 )}
               >
-                <Icon
-                  className={cn(
-                    'h-7 w-7',
-                    active ? 'text-blue-600' : 'text-gray-400',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'text-xs font-semibold',
-                    active ? 'text-blue-700' : 'text-gray-700',
-                  )}
-                >
+                <Icon className={cn('h-7 w-7', active ? 'text-blue-400' : 'text-slate-500')} />
+                <span className={cn('text-xs font-semibold', active ? 'text-blue-400' : 'text-slate-400')}>
                   {label}
                 </span>
-                <span className="text-[10px] text-gray-400 text-center leading-tight hidden sm:block">
+                <span className="text-[10px] text-slate-600 text-center leading-tight hidden sm:block">
                   {desc}
                 </span>
               </button>
@@ -151,15 +142,10 @@ export default function DamageForm({
       {/* ── Tingkat Keparahan ── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700">
-            Tingkat Keparahan *
-          </label>
+          <label htmlFor="severity-range" className="text-sm font-medium text-slate-300">Tingkat Keparahan *</label>
           <span
             className="text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{
-              color:           severityConf.hex,
-              backgroundColor: `${severityConf.hex}18`,
-            }}
+            style={{ color: severityConf.hex, backgroundColor: `${severityConf.hex}20` }}
           >
             {severity} — {severityConf.label}
           </span>
@@ -169,6 +155,7 @@ export default function DamageForm({
           control={control}
           render={({ field }) => (
             <input
+              id="severity-range"
               type="range"
               min={1} max={5} step={1}
               value={field.value}
@@ -182,7 +169,7 @@ export default function DamageForm({
           {SEVERITY_CONFIG.map((s) => (
             <span
               key={s.value}
-              style={{ color: severity === s.value ? s.hex : '#9ca3af' }}
+              style={{ color: severity === s.value ? s.hex : '#475569' }}
               className="font-medium transition-colors"
             >
               {s.label}
@@ -193,54 +180,42 @@ export default function DamageForm({
 
       {/* ── Judul ── */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700">
-          Judul Laporan *
-        </label>
+        <label htmlFor="title" className="text-sm font-medium text-slate-300">Judul Laporan *</label>
         <input
           {...register('title')}
+          id="title"
           type="text"
           placeholder="Contoh: Jalan berlubang besar di depan SDN 1"
-          className={cn(
-            'w-full px-3 py-2.5 rounded-xl border text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0',
-            errors.title ? 'border-red-400' : 'border-gray-300',
-          )}
+          className={cn(inputBase, errors.title && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
         />
-        {errors.title && (
-          <p className="text-xs text-red-600">{errors.title.message}</p>
-        )}
+        {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
       </div>
 
       {/* ── Deskripsi ── */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700">
-          Deskripsi *
-        </label>
+        <label htmlFor="description" className="text-sm font-medium text-slate-300">Deskripsi *</label>
         <textarea
           {...register('description')}
+          id="description"
           rows={4}
-          placeholder="Deskripsikan kondisi kerusakan secara detail. Contoh: lubang ±1m × 0.5m kedalaman 20cm, sangat berbahaya saat malam hari..."
-          className={cn(
-            'w-full px-3 py-2.5 rounded-xl border text-sm resize-none',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0',
-            errors.description ? 'border-red-400' : 'border-gray-300',
-          )}
+          placeholder="Deskripsikan kondisi kerusakan secara detail..."
+          className={cn(inputBase, 'resize-none', errors.description && 'border-red-500')}
         />
         <div className="flex justify-between">
           {errors.description ? (
-            <p className="text-xs text-red-600">{errors.description.message}</p>
+            <p className="text-xs text-red-400">{errors.description.message}</p>
           ) : (
             <span />
           )}
-          <span className="text-xs text-gray-400">{descLength}/2000</span>
+          <span className="text-xs text-slate-600">{descLength}/2000</span>
         </div>
       </div>
 
       {/* ── Anonim Toggle ── */}
-      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-slate-800/50 border border-slate-700 rounded-xl">
         <div>
-          <p className="text-sm font-medium text-gray-700">Laporkan Secara Anonim</p>
-          <p className="text-xs text-gray-500 mt-0.5">Nama Anda tidak akan ditampilkan publik</p>
+          <p className="text-sm font-medium text-slate-300">Laporkan Secara Anonim</p>
+          <p className="text-xs text-slate-500 mt-0.5">Nama Anda tidak akan ditampilkan publik</p>
         </div>
         <Controller
           name="isAnonymous"
@@ -253,7 +228,7 @@ export default function DamageForm({
               onClick={() => field.onChange(!field.value)}
               className={cn(
                 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
-                field.value ? 'bg-blue-600' : 'bg-gray-300',
+                field.value ? 'bg-blue-600' : 'bg-slate-600',
               )}
             >
               <span
@@ -272,14 +247,14 @@ export default function DamageForm({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 px-5 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex items-center gap-1.5 px-5 py-3 rounded-xl border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
           Kembali
         </button>
         <button
           type="submit"
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors"
+          className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors"
         >
           Lanjutkan ke Foto →
         </button>

@@ -15,8 +15,8 @@ const LocationPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-72 bg-gray-100 rounded-2xl animate-pulse flex items-center justify-center">
-        <p className="text-sm text-gray-400">Memuat peta...</p>
+      <div className="h-72 bg-slate-800 rounded-2xl animate-pulse flex items-center justify-center">
+        <p className="text-sm text-slate-500">Memuat peta...</p>
       </div>
     ),
   },
@@ -30,12 +30,24 @@ const STEPS = [
   { id: 3 as const, label: 'Foto & Konfirmasi' },
 ];
 
-function ProgressBar({ currentStep }: { currentStep: 1 | 2 | 3 }) {
+function stepCircleClass(isDone: boolean, isActive: boolean) {
+  if (isDone)   return 'bg-blue-600 border-blue-600 text-white';
+  if (isActive) return 'bg-slate-950 border-blue-500 text-blue-400';
+  return 'bg-slate-800 border-slate-700 text-slate-500';
+}
+
+function stepLabelClass(isDone: boolean, isActive: boolean) {
+  if (isActive) return 'text-blue-400';
+  if (isDone)   return 'text-blue-500';
+  return 'text-slate-500';
+}
+
+function ProgressBar({ currentStep }: { readonly currentStep: 1 | 2 | 3 }) {
   return (
     <div className="mb-8">
       <div className="flex items-start">
         {STEPS.map((step, idx) => {
-          const isDone = currentStep > step.id;
+          const isDone   = currentStep > step.id;
           const isActive = currentStep === step.id;
           return (
             <div key={step.id} className="flex items-start flex-1">
@@ -43,11 +55,7 @@ function ProgressBar({ currentStep }: { currentStep: 1 | 2 | 3 }) {
                 <div
                   className={cn(
                     'h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all',
-                    isDone
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : isActive
-                        ? 'bg-white border-blue-600 text-blue-600'
-                        : 'bg-white border-gray-300 text-gray-400',
+                    stepCircleClass(isDone, isActive),
                   )}
                 >
                   {isDone ? <CheckCircle className="h-5 w-5" /> : step.id}
@@ -55,7 +63,7 @@ function ProgressBar({ currentStep }: { currentStep: 1 | 2 | 3 }) {
                 <span
                   className={cn(
                     'mt-1.5 text-[11px] font-medium text-center leading-tight',
-                    isActive ? 'text-blue-600' : isDone ? 'text-blue-500' : 'text-gray-400',
+                    stepLabelClass(isDone, isActive),
                   )}
                 >
                   {step.label}
@@ -65,7 +73,7 @@ function ProgressBar({ currentStep }: { currentStep: 1 | 2 | 3 }) {
                 <div
                   className={cn(
                     'flex-1 h-0.5 mt-4 mx-2 transition-all',
-                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200',
+                    currentStep > step.id ? 'bg-blue-600' : 'bg-slate-700',
                   )}
                 />
               )}
@@ -94,13 +102,13 @@ export default function NewReportPage() {
       <div className="mb-6">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-3"
+          className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200 transition-colors mb-3"
         >
           <ChevronLeft className="h-4 w-4" />
           Kembali
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Buat Laporan</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-100">Buat Laporan</h1>
+        <p className="text-sm text-slate-500 mt-1">
           Laporkan kerusakan jalan yang Anda temui
         </p>
       </div>
