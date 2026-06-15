@@ -106,7 +106,9 @@ export default async function HomePage() {
   return (
     <>
       {/* ── Hero Section — Full Screen ── */}
-      <section className="relative bg-gradient-to-br from-blue-800 via-blue-600 to-indigo-700 text-white px-4 min-h-[calc(100vh-64px)] flex flex-col overflow-hidden">
+      {/* min-h-screen: navbar fixed jadi tidak ambil space di flow, hero bisa fullscreen */}
+      {/* pt-16: dorong konten ke bawah navbar (64px) agar tidak tertimpa */}
+      <section className="relative bg-gradient-to-br from-blue-800 via-blue-600 to-indigo-700 text-white px-4 min-h-screen pt-16 flex flex-col overflow-hidden">
 
         {/* Decorative background blobs */}
         <div className="pointer-events-none absolute top-0 right-0 h-[36rem] w-[36rem] rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/3" />
