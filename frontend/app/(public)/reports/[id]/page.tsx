@@ -7,7 +7,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import {
   AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock,
-  Eye, MapPin, Trash2, User, XCircle, Activity, Shield,
+  Eye, MapPin, Pencil, Trash2, User, XCircle, Activity, Shield,
   AlertTriangle, ChevronRight,
 } from 'lucide-react';
 import apiClient from '@/lib/axios';
@@ -106,6 +106,11 @@ export default function ReportDetailPage() {
   }, [fetchReport]);
 
   const canDelete = !!(user && report && (user.id === report.userId || isAdmin));
+  const canEdit   = !!(
+    user && report &&
+    (user.id === report.userId || isAdmin) &&
+    report.status !== 'VERIFIED' && report.status !== 'RESOLVED'
+  );
 
   async function handleDelete() {
     if (!report) return;
@@ -408,17 +413,28 @@ export default function ReportDetailPage() {
           Lihat di Peta
         </Link>
 
-        {canDelete && (
-          <button
-            type="button"
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-            className="ml-auto flex items-center gap-2 text-sm text-red-400 hover:text-red-300 border border-red-500/20 hover:bg-red-500/10 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" />
-            {deleting ? 'Menghapus...' : 'Hapus Laporan'}
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {canEdit && (
+            <Link
+              href={`/reports/${report.id}/edit`}
+              className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:bg-blue-500/10 px-4 py-2 rounded-xl transition-colors"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Laporan
+            </Link>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 border border-red-500/20 hover:bg-red-500/10 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleting ? 'Menghapus...' : 'Hapus Laporan'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

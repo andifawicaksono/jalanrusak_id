@@ -201,6 +201,79 @@ export async function updateReportStatus(req: AuthRequest, res: Response): Promi
   }
 }
 
+// ─── updateReport ─────────────────────────────────────────────────
+
+const updateReportSchema = z.object({
+  title:        z.string().min(5).max(200).trim(),
+  description:  z.string().min(10).max(2000).trim(),
+  latitude:     z.coerce.number().min(-90).max(90),
+  longitude:    z.coerce.number().min(-180).max(180),
+  address:      z.string().min(5).max(500).trim(),
+  roadName:     z.string().max(200).trim().optional(),
+  damageType:   z.nativeEnum(DamageType),
+  severity:     z.coerce.number().int().min(1).max(5),
+  keepPhotoIds: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((v) => {
+      if (!v) return [];
+      return Array.isArray(v) ? v : [v];
+    }),
+});
+
+/**
+ * PATCH /api/v1/reports/:id
+ * Auth: pemilik laporan atau ADMIN
+ * Multipart: field 'photos' (0–5 gambar baru), field 'keepPhotoIds' (IDs foto yang dipertahankan)
+ */
+export async function updateReport(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params['id'] as string;
+
+  if (!z.string().uuid().safeParse(id).success) {
+    res.status(400).json({ error: 'ID laporan tidak valid' });
+    return;
+  }
+
+  const parsed = updateReportSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({
+      error:   'Validasi gagal',
+      details: parsed.error.flatten().fieldErrors,
+    });
+    return;
+  }
+
+  const newFiles = (req.files as UploadedFile[]) ?? [];
+
+  try {
+    const report = await reportService.updateReport({
+      ...parsed.data,
+      reportId:      id,
+      requesterId:   req.user!.userId,
+      requesterRole: req.user!.role,
+      newFiles,
+    });
+
+    res.json({ message: 'Laporan berhasil diperbarui', report });
+  } catch (error) {
+    if (error instanceof Error) {
+      const isClientError =
+        error.message.startsWith('Laporan tidak ditemukan') ||
+        error.message.startsWith('Tidak diizinkan') ||
+        error.message.startsWith('Laporan dengan status') ||
+        error.message.startsWith('Laporan harus memiliki');
+
+      if (isClientError) {
+        const status = error.message.startsWith('Tidak diizinkan') ? 403 : 422;
+        res.status(status).json({ error: error.message });
+        return;
+      }
+    }
+    console.error('[updateReport]', error);
+    res.status(500).json({ error: 'Gagal memperbarui laporan' });
+  }
+}
+
 // ─── getMapMarkers ────────────────────────────────────────────────
 
 /**
