@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'path';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import { routes } from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
@@ -19,10 +19,20 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 
 // CORS: izinkan request dari domain frontend
+// FRONTEND_URL bisa berisi beberapa origin dipisahkan koma:
+// FRONTEND_URL=https://domain.com,http://103.x.x.x:3001
+const rawOrigins = process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowedOrigins = new Set(rawOrigins.split(',').map((o) => o.trim()));
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true, // Izinkan cookie dan Authorization header
+    origin: (origin, callback) => {
+      // Izinkan request tanpa origin (curl, server-to-server, mobile)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' tidak diizinkan`));
+    },
+    credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
