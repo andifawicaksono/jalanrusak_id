@@ -44,6 +44,18 @@ enum DamageType {
 
 // ─── Models ───────────────────────────────────────────────────────
 
+model AppRole {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String    @unique @db.VarChar(50)
+  displayName String    @map("display_name") @db.VarChar(100)
+  description String?   @db.Text
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  users User[]
+
+  @@map("roles")
+}
+
 model User {
   id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name         String    @db.VarChar(100)
@@ -52,12 +64,14 @@ model User {
   role         Role?     @default(PUBLIC)
   phone        String?   @db.VarChar(20)
   avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  roleId       String?   @map("role_id") @db.Uuid
   isActive     Boolean?  @default(true) @map("is_active")
   isVerified   Boolean?  @default(false) @map("is_verified")
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamp(6)
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  roleInfo      AppRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
   reports       Report[]
   statusChanges StatusHistory[]
   sessions      Session[]
