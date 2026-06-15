@@ -49,8 +49,14 @@ app.use(express.urlencoded({ extended: true }));
 // ─── Static Files (Foto Upload) ────────────────────────────────────
 
 // Serve folder uploads agar foto dapat diakses via GET /uploads/namafile.jpg
+// Cross-Origin-Resource-Policy diset ke 'cross-origin' agar browser bisa memuat
+// foto langsung dari domain/port yang berbeda (misal: localhost:3001 dari localhost:3000)
 app.use(
   '/uploads',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
   express.static(path.resolve(process.env.UPLOAD_DIR || 'uploads')),
 );
 

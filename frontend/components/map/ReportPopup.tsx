@@ -119,7 +119,8 @@ export default function ReportPopup({ marker, onClose }: Props) {
                 fill
                 className="object-cover"
                 sizes="320px"
-                unoptimized={primaryPhoto.url.startsWith('http://localhost')}
+                priority
+                unoptimized={primaryPhoto.url.startsWith('http')}
               />
               {report.photos.length > 1 && (
                 <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
