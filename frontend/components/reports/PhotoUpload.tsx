@@ -121,7 +121,7 @@ export default function PhotoUpload({
     }
   }
 
-  function handleFilesFromInput(ref: React.RefObject<HTMLInputElement>) {
+  function handleFilesFromInput(ref: React.RefObject<HTMLInputElement | null>) {
     if (!ref.current?.files) return;
     addFiles(Array.from(ref.current.files));
     ref.current.value = '';
