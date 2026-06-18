@@ -287,7 +287,7 @@ REJECTED    → (terminal, tidak bisa diubah)
 
 ---
 
-## Variabel Lingkungan
+## ENV Variable
 
 ### Backend (`backend/.env`)
 
