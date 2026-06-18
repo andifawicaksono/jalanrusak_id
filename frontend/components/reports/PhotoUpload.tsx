@@ -1,7 +1,7 @@
 'use client';
 
 import { DragEvent, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Star, Upload, X } from 'lucide-react';
+import { AlertCircle, Camera, FolderOpen, Star, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReportFormStore } from '@/store/reportFormStore';
 
@@ -31,11 +31,14 @@ export default function PhotoUpload({
 }: Props) {
   const { isSubmitting, uploadProgress } = useReportFormStore();
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [fileErrors, setFileErrors] = useState<string[]>([]);
-  const [previews, setPreviews]     = useState<string[]>([]);
+  const [isDragging, setIsDragging]           = useState(false);
+  const [fileErrors, setFileErrors]           = useState<string[]>([]);
+  const [previews, setPreviews]               = useState<string[]>([]);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [cameraError, setCameraError]         = useState<string | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const urls = photos.map((f) => URL.createObjectURL(f));
@@ -71,11 +74,57 @@ export default function PhotoUpload({
   function removePhoto(index: number) {
     const next = photos.filter((_, i) => i !== index);
     onPhotosChange(next);
-    if (primaryIndex === index) {
-      onPrimaryChange(0);
-    } else if (primaryIndex > index) {
-      onPrimaryChange(primaryIndex - 1);
+    if (primaryIndex === index) onPrimaryChange(0);
+    else if (primaryIndex > index) onPrimaryChange(primaryIndex - 1);
+  }
+
+  function openSourcePicker() {
+    setCameraError(null);
+    setShowSourcePicker(true);
+  }
+
+  function handleGalleryChoice() {
+    setShowSourcePicker(false);
+    galleryInputRef.current?.click();
+  }
+
+  async function handleCameraChoice() {
+    setShowSourcePicker(false);
+
+    // Cek apakah browser mendukung akses kamera via MediaDevices API
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Browser tidak mendukung (HTTP non-localhost, atau browser lama)
+      // Fallback: gunakan input capture — browser/OS yang menangani
+      cameraInputRef.current?.click();
+      return;
     }
+
+    // Minta izin kamera terlebih dahulu agar error bisa ditangkap
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Matikan stream segera — hanya untuk cek izin, bukan preview
+      stream.getTracks().forEach((t) => t.stop());
+      cameraInputRef.current?.click();
+    } catch (err) {
+      const isDenied =
+        err instanceof DOMException &&
+        (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+
+      if (isDenied) {
+        setCameraError(
+          'Akses kamera ditolak. Buka pengaturan browser dan izinkan akses kamera, lalu coba lagi.',
+        );
+      } else {
+        // Kamera tidak tersedia (perangkat tanpa kamera), fallback ke gallery
+        setCameraError('Kamera tidak tersedia di perangkat ini. Gunakan opsi Gallery/File.');
+      }
+    }
+  }
+
+  function handleFilesFromInput(ref: React.RefObject<HTMLInputElement>) {
+    if (!ref.current?.files) return;
+    addFiles(Array.from(ref.current.files));
+    ref.current.value = '';
   }
 
   const handleDragOver  = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragging(true); };
@@ -84,12 +133,6 @@ export default function PhotoUpload({
     e.preventDefault();
     setIsDragging(false);
     addFiles(Array.from(e.dataTransfer.files));
-  };
-  const handleInputChange = () => {
-    if (inputRef.current?.files) {
-      addFiles(Array.from(inputRef.current.files));
-      inputRef.current.value = '';
-    }
   };
 
   return (
@@ -131,8 +174,8 @@ export default function PhotoUpload({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+          onClick={openSourcePicker}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openSourcePicker(); }}
           className={cn(
             'border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all select-none',
             isDragging
@@ -142,23 +185,115 @@ export default function PhotoUpload({
         >
           <Upload className={cn('h-8 w-8 mx-auto mb-2', isDragging ? 'text-blue-400' : 'text-slate-500')} />
           <p className="text-sm font-medium text-slate-300">
-            {isDragging ? 'Lepaskan foto di sini' : 'Klik atau seret foto ke sini'}
+            {isDragging ? 'Lepaskan foto di sini' : 'Klik untuk tambah foto atau seret ke sini'}
           </p>
           <p className="text-xs text-slate-600 mt-1">
             JPEG, PNG, WebP · maks {MAX_SIZE_MB}MB per foto
           </p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ALLOWED_MIME.join(',')}
-            multiple
-            className="hidden"
-            onChange={handleInputChange}
-          />
         </div>
       )}
 
-      {/* Error validasi */}
+      {/* Hidden inputs */}
+      {/* capture="environment" → kamera belakang; browser/OS menangani izin */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={() => handleFilesFromInput(cameraInputRef)}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept={ALLOWED_MIME.join(',')}
+        multiple
+        className="hidden"
+        onChange={() => handleFilesFromInput(galleryInputRef)}
+      />
+
+      {/* Source picker modal */}
+      {showSourcePicker && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSourcePicker(false)}
+            aria-hidden="true"
+          />
+
+          {/* Sheet — bottom on mobile, centered on desktop */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pilih sumber foto"
+            className={cn(
+              'fixed z-50 bg-slate-900 border border-slate-700 shadow-2xl',
+              // Mobile: full-width sheet dari bawah
+              'bottom-0 left-0 right-0 rounded-t-3xl px-4 pb-8 pt-4',
+              // Desktop: modal kecil di tengah
+              'sm:inset-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-80 sm:rounded-2xl sm:px-6 sm:py-6',
+            )}
+          >
+            {/* Handle bar (mobile only) */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-700 sm:hidden" />
+
+            <p className="text-center text-sm font-semibold text-slate-200 mb-5">
+              Tambah Foto Bukti
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Kamera */}
+              <button
+                type="button"
+                onClick={handleCameraChoice}
+                className="flex flex-col items-center gap-3 rounded-2xl border border-slate-700 bg-slate-800 p-5 transition-colors hover:border-blue-500/50 hover:bg-blue-500/5 active:scale-95"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/15 border border-blue-500/20">
+                  <Camera className="h-6 w-6 text-blue-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-200">Ambil Foto</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Kamera</p>
+                </div>
+              </button>
+
+              {/* Gallery */}
+              <button
+                type="button"
+                onClick={handleGalleryChoice}
+                className="flex flex-col items-center gap-3 rounded-2xl border border-slate-700 bg-slate-800 p-5 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/5 active:scale-95"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/20">
+                  <FolderOpen className="h-6 w-6 text-emerald-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-200">Pilih File</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Gallery / File</p>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSourcePicker(false)}
+              className="mt-4 w-full py-2.5 rounded-xl text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            >
+              Batal
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Error kamera */}
+      {cameraError && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-xs text-red-400">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{cameraError}</span>
+        </div>
+      )}
+
+      {/* Error validasi file */}
       {fileErrors.length > 0 && (
         <div className="space-y-1">
           {fileErrors.map((err) => (
