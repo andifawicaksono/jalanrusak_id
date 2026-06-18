@@ -270,7 +270,7 @@ function imageFileFilter(_req: Request, file: Express.Multer.File, cb: FileFilte
   }
 }
 
-const MAX_FILE_SIZE = Number.parseInt(process.env.MAX_FILE_SIZE ?? '5242880', 10);
+const MAX_FILE_SIZE = Number.parseInt(process.env.MAX_FILE_SIZE ?? '10485760', 10);
 
 // memoryStorage: file tidak pernah menyentuh disk sebelum diproses Sharp
 const memStorage = multer.memoryStorage();

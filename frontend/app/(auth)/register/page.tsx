@@ -13,15 +13,23 @@ import { useAuthStore } from '@/store/authStore';
 
 const registerSchema = z
   .object({
-    name:            z.string().min(2, 'Nama minimal 2 karakter'),
+    name:            z.string().min(3, 'Nama minimal 3 karakter').max(100, 'Nama maksimal 100 karakter'),
     email:           z.string().email('Format email tidak valid'),
     password:        z
       .string()
       .min(8, 'Password minimal 8 karakter')
-      .regex(/[A-Z]/, 'Harus mengandung huruf kapital')
-      .regex(/\d/, 'Harus mengandung angka'),
+      .regex(/[A-Z]/, 'Harus mengandung huruf kapital (A-Z)')
+      .regex(/[0-9]/, 'Harus mengandung angka (0-9)')
+      .regex(/[^A-Za-z0-9]/, 'Harus mengandung simbol (!@#$%^& dll)'),
     confirmPassword: z.string(),
-    phone:           z.string().optional(),
+    phone:           z
+      .string()
+      .regex(
+        /^(\+62|62|0)\d{8,12}$/,
+        'Format tidak valid (contoh: 08123456789 atau +6281234567890)',
+      )
+      .optional()
+      .or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Konfirmasi password tidak sesuai',
@@ -53,9 +61,10 @@ export default function RegisterPage() {
   const passwordValue = watch('password', '');
 
   const passwordRequirements = [
-    { label: 'Minimal 8 karakter',   met: passwordValue.length >= 8 },
-    { label: 'Huruf kapital (A–Z)',   met: /[A-Z]/.test(passwordValue) },
-    { label: 'Mengandung angka (0–9)', met: /\d/.test(passwordValue) },
+    { label: 'Minimal 8 karakter',        met: passwordValue.length >= 8 },
+    { label: 'Huruf kapital (A–Z)',        met: /[A-Z]/.test(passwordValue) },
+    { label: 'Angka (0–9)',               met: /[0-9]/.test(passwordValue) },
+    { label: 'Simbol (!@#$%^& dll)',      met: /[^A-Za-z0-9]/.test(passwordValue) },
   ];
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -100,7 +109,7 @@ export default function RegisterPage() {
             className={inputBase}
             {...register('name')}
           />
-          {errors.name && <p className="text-red-400 text-xs">{errors.name.message}</p>}
+          {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
         </div>
 
         {/* Email */}
@@ -131,6 +140,7 @@ export default function RegisterPage() {
             className={inputBase}
             {...register('phone')}
           />
+          {errors.phone && <p className="text-xs text-red-400">{errors.phone.message}</p>}
         </div>
 
         {/* Password */}
