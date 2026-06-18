@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, MapPin } from 'lucide-react';
+import { LogOut, Menu, MapPin } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Sidebar from '@/components/layout/Sidebar';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,13 @@ import { cn } from '@/lib/utils';
 export default function DashboardLayout({ children }: { readonly children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  function handleLogout() {
+    logout();
+    router.push('/');
+  }
 
   // Auth guard — redirect jika belum login
   useEffect(() => {
@@ -78,6 +83,13 @@ export default function DashboardLayout({ children }: { readonly children: React
             <MapPin className="h-4 w-4 text-primary" />
             JalanRusak
           </Link>
+          <button
+            onClick={handleLogout}
+            aria-label="Keluar"
+            className="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
         </header>
 
         {/* Page content */}
