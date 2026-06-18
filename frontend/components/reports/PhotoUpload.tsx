@@ -8,7 +8,7 @@ import { useReportFormStore } from '@/store/reportFormStore';
 // ─── Constants ───────────────────────────────────────────────────────
 
 const MAX_PHOTOS   = 5;
-const MAX_SIZE_MB  = 5;
+const MAX_SIZE_MB  = 10;
 const MAX_BYTES    = MAX_SIZE_MB * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
