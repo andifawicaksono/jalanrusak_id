@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import { toast } from 'sonner';
 import {
   AlertCircle, CheckCircle2, ChevronLeft,
   ExternalLink, Eye, EyeOff, Loader2, MapPin,
@@ -124,13 +125,18 @@ export default function ReportConfirm({
         reportNumber: res.data.report.reportNumber,
       });
       setIsSubmitting(false);
+      toast.success('Laporan berhasil dibuat', {
+        description: `Nomor laporan: ${res.data.report.reportNumber}`,
+      });
       onSuccess();
     } catch (err) {
       const msg = axios.isAxiosError(err)
-        ? ((err.response?.data as { error?: string })?.error ??
+        ? ((err.response?.data as { message?: string; error?: string })?.message ??
+          (err.response?.data as { message?: string; error?: string })?.error ??
           'Gagal mengirim laporan. Silakan coba lagi.')
         : 'Gagal mengirim laporan. Silakan coba lagi.';
       setError(msg);
+      toast.error('Laporan gagal dikirim', { description: msg });
       setIsSubmitting(false);
     } finally {
       setIsLoading(false);

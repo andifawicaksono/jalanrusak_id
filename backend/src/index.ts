@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'node:path';
+import fs from 'node:fs';
 import dotenv from 'dotenv';
 import { routes } from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
@@ -46,6 +47,20 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Pastikan Folder Upload Tersedia ──────────────────────────────
+
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+
+// Deteksi konfigurasi API_BASE_URL yang salah di production
+const apiBaseUrl = process.env.API_BASE_URL || '';
+if (process.env.NODE_ENV === 'production' && apiBaseUrl.includes('localhost')) {
+  console.error('[CONFIG ERROR] API_BASE_URL mengandung "localhost" di production!');
+  console.error(`[CONFIG ERROR] Nilai saat ini: ${apiBaseUrl}`);
+  console.error('[CONFIG ERROR] Foto yang diupload tidak akan bisa diakses publik.');
+  console.error('[CONFIG ERROR] Set API_BASE_URL ke domain publik backend, contoh: https://api.domain.com');
+}
+
 // ─── Static Files (Foto Upload) ────────────────────────────────────
 
 // Serve folder uploads agar foto dapat diakses via GET /uploads/namafile.jpg
@@ -57,7 +72,7 @@ app.use(
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
   },
-  express.static(path.resolve(process.env.UPLOAD_DIR || 'uploads')),
+  express.static(uploadDir),
 );
 
 // ─── API Routes ────────────────────────────────────────────────────

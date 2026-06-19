@@ -331,7 +331,7 @@ REJECTED    → (terminal, tidak bisa diubah)
 ### Prasyarat Server
 
 - VPS dengan AlmaLinux 9 / Ubuntu 22
-- Node.js ≥ 20, PM2, Nginx, Certbot
+- Node.js ≥ 20, PM2, Apache2 (httpd), Certbot
 - PostgreSQL + PostGIS
 - Domain yang DNS-nya sudah diarahkan ke IP VPS
 
@@ -354,37 +354,79 @@ pm2 start /root/apps/jalanrusak_id/ecosystem.config.js
 pm2 save && pm2 startup
 ```
 
-### Nginx Reverse Proxy
+### Apache Reverse Proxy
 
-```nginx
-# /etc/nginx/conf.d/jalanrusak.conf
+Aktifkan modul proxy yang dibutuhkan (AlmaLinux/CentOS: sudah aktif secara default):
 
-server {
-    server_name jalan-rusak.andifawicaksono.cloud;
-    location / {
-        proxy_pass         http://localhost:3001;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-    }
-}
+```bash
+# Ubuntu/Debian
+a2enmod proxy proxy_http headers
+systemctl restart apache2
 
-server {
-    server_name api.jalan-rusak.andifawicaksono.cloud;
-    client_max_body_size 15M;
-    location / {
-        proxy_pass         http://localhost:5000;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-    }
-}
+# AlmaLinux/CentOS — cek apakah sudah aktif
+httpd -M | grep proxy
+```
+
+Buat virtual host baru:
+
+```bash
+# AlmaLinux: /etc/httpd/conf.d/jalanrusak.conf
+# Ubuntu:    /etc/apache2/sites-available/jalanrusak.conf
+```
+
+```apache
+# ── Frontend ──────────────────────────────────────────────────────
+<VirtualHost *:80>
+    ServerName jalan-rusak.andifawicaksono.cloud
+
+    ProxyPreserveHost On
+    ProxyPass        / http://localhost:3001/
+    ProxyPassReverse / http://localhost:3001/
+
+    RequestHeader set X-Forwarded-Proto "http"
+</VirtualHost>
+
+# ── Backend API ───────────────────────────────────────────────────
+<VirtualHost *:80>
+    ServerName api.jalan-rusak.andifawicaksono.cloud
+
+    # Izinkan upload hingga 15MB (wajib! default Apache bisa lebih kecil)
+    LimitRequestBody 15728640
+
+    ProxyPreserveHost On
+    ProxyPass        / http://localhost:5000/
+    ProxyPassReverse / http://localhost:5000/
+
+    RequestHeader set X-Forwarded-Proto "http"
+</VirtualHost>
 ```
 
 ```bash
-nginx -t && systemctl reload nginx
-certbot --nginx \
+# AlmaLinux
+httpd -t && systemctl reload httpd
+
+# Ubuntu
+a2ensite jalanrusak
+apache2ctl configtest && systemctl reload apache2
+```
+
+Pasang SSL dengan Certbot:
+
+```bash
+# AlmaLinux
+dnf install -y python3-certbot-apache
+certbot --apache \
+  -d jalan-rusak.andifawicaksono.cloud \
+  -d api.jalan-rusak.andifawicaksono.cloud
+
+# Ubuntu
+apt install -y python3-certbot-apache
+certbot --apache \
   -d jalan-rusak.andifawicaksono.cloud \
   -d api.jalan-rusak.andifawicaksono.cloud
 ```
+
+> **Penting:** Setelah Certbot menambahkan blok SSL, pastikan `LimitRequestBody 15728640` juga ada di dalam blok `<VirtualHost *:443>` untuk domain API.
 
 ### CI/CD Otomatis (GitHub Actions)
 
