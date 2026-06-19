@@ -46,7 +46,7 @@ async function fetchDashboardStats(): Promise<DashboardStats> {
   }
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────
+// ─── Page ───────────────────────────────────────────────────────────── tes
 
 export default async function DashboardPage() {
   const stats = await fetchDashboardStats();
