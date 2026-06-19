@@ -209,6 +209,86 @@ export async function getReports(input: GetReportsInput) {
   return { reports: masked, nextCursor, hasMore };
 }
 
+// ─── getUserReports (page-based pagination) ───────────────────────
+
+export interface GetUserReportsInput {
+  userId: string;
+  page: number;
+  limit: number;
+  search?: string;
+  status?: ReportStatus;
+  sort: 'newest' | 'oldest';
+}
+
+/**
+ * Laporan milik user tertentu dengan page-based pagination.
+ * Dipakai oleh endpoint GET /reports/my — user hanya melihat laporan miliknya.
+ */
+export async function getUserReports(input: GetUserReportsInput) {
+  const { userId, page, limit, search, status, sort } = input;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.ReportWhereInput = {
+    userId,
+    ...(status && { status }),
+    ...(search && {
+      OR: [
+        { title:       { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { address:     { contains: search, mode: 'insensitive' } },
+      ],
+    }),
+  };
+
+  const [total, rows] = await Promise.all([
+    prisma.report.count({ where }),
+    prisma.report.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { reportedAt: sort === 'oldest' ? 'asc' : 'desc' },
+      select: {
+        id:           true,
+        reportNumber: true,
+        title:        true,
+        description:  true,
+        damageType:   true,
+        severity:     true,
+        status:       true,
+        address:      true,
+        latitude:     true,
+        longitude:    true,
+        isAnonymous:  true,
+        userId:       true,
+        reportedAt:   true,
+        updatedAt:    true,
+        photos: {
+          where:  { isPrimary: true },
+          select: { id: true, url: true, filename: true, reportId: true },
+          take:   1,
+        },
+        user: {
+          select: { id: true, name: true, avatarUrl: true },
+        },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  // Alias reportedAt → createdAt untuk kompatibilitas dengan tipe Report di frontend
+  const reports = rows.map((r) => ({
+    ...r,
+    createdAt: r.reportedAt?.toISOString() ?? new Date().toISOString(),
+    updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
+  }));
+
+  return {
+    reports,
+    meta: { page, limit, total, totalPages },
+  };
+}
+
 // ─── getReportById ────────────────────────────────────────────────
 
 /**

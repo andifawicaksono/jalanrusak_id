@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { Providers } from './providers';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -19,18 +20,20 @@ export const metadata: Metadata = {
  * Root layout — membungkus seluruh aplikasi.
  * Di sinilah font, metadata, dan provider global dipasang.
  */
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { readonly children: React.ReactNode }) {
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
-        {children}
-        <Toaster
-          theme="dark"
-          position="top-right"
-          richColors
-          closeButton
-          duration={4000}
-        />
+        <Providers>
+          {children}
+          <Toaster
+            theme="dark"
+            position="top-right"
+            richColors
+            closeButton
+            duration={4000}
+          />
+        </Providers>
       </body>
     </html>
   );

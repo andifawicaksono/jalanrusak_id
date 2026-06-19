@@ -4,6 +4,7 @@ import { DamageType, ReportStatus } from '@prisma/client';
 import { AuthRequest } from '../types';
 import * as reportService from '../services/report.service';
 import type { UploadedFile } from '../services/report.service';
+import { sendPaginated } from '../utils/response';
 
 // ─── Schema Validasi ──────────────────────────────────────────────
 
@@ -306,6 +307,44 @@ export async function deleteReport(req: AuthRequest, res: Response): Promise<voi
   } catch (error) {
     console.error('[deleteReport]', error);
     res.status(500).json({ error: 'Gagal menghapus laporan' });
+  }
+}
+
+// ─── getMyReports ────────────────────────────────────────────────
+
+const getMyReportsSchema = z.object({
+  page:   z.coerce.number().int().min(1).optional().default(1),
+  limit:  z.coerce.number().int().min(1).max(50).optional().default(10),
+  search: z.string().max(100).trim().optional(),
+  status: z.nativeEnum(ReportStatus).optional(),
+  sort:   z.enum(['newest', 'oldest']).optional().default('newest'),
+});
+
+/**
+ * GET /api/v1/reports/my
+ * Auth: wajib login
+ * Daftar laporan milik user yang sedang login dengan page-based pagination.
+ */
+export async function getMyReports(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = getMyReportsSchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(422).json({ error: 'Parameter tidak valid', details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
+  try {
+    const result = await reportService.getUserReports({
+      userId: req.user!.userId,
+      page:   parsed.data.page,
+      limit:  parsed.data.limit,
+      search: parsed.data.search,
+      status: parsed.data.status,
+      sort:   parsed.data.sort as 'newest' | 'oldest',
+    });
+    sendPaginated(res, result.reports, result.meta, 'Laporan berhasil diambil');
+  } catch (error) {
+    console.error('[getMyReports]', error);
+    res.status(500).json({ error: 'Gagal mengambil laporan' });
   }
 }
 

@@ -31,6 +31,13 @@ router.get('/nearby', reportController.getNearbyReports);
 router.get('/', reportController.getReports);
 
 /**
+ * GET /api/v1/reports/my
+ * Daftar laporan milik user yang login — page-based pagination (wajib login).
+ * Query: page, limit, search, status, sort (newest|oldest)
+ */
+router.get('/my', authenticateToken, reportController.getMyReports);
+
+/**
  * GET /api/v1/reports/:id
  * Detail laporan — menaikkan viewsCount secara atomik (publik).
  * optionalAuth: jika ada token yang valid, user context tersedia di controller.
