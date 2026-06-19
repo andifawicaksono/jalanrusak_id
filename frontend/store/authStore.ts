@@ -12,6 +12,9 @@ interface AuthState {
   /** Login dengan email dan password */
   login: (email: string, password: string) => Promise<void>;
 
+  /** Login dengan Google OAuth — accessToken dari @react-oauth/google */
+  loginWithGoogle: (accessToken: string) => Promise<void>;
+
   /** Daftar akun baru */
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
 
@@ -52,6 +55,24 @@ export const useAuthStore = create<AuthState>()(
             (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
             'Login gagal. Periksa kembali email dan password Anda.';
           set({ error: message, isLoading: false });
+        }
+      },
+
+      loginWithGoogle: async (accessToken) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await apiClient.post<{ data: AuthResponse }>('/auth/google', {
+            accessToken,
+          });
+          const { user, accessToken: jwt } = response.data.data;
+          localStorage.setItem('auth_token', jwt);
+          set({ user, token: jwt, isLoading: false });
+        } catch (error: unknown) {
+          const message =
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Login Google gagal. Silakan coba lagi.';
+          set({ error: message, isLoading: false });
+          throw new Error(message);
         }
       },
 

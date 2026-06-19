@@ -25,6 +25,9 @@ router.post('/register', authController.register);
 /** Login — return { accessToken, refreshToken, user } */
 router.post('/login', authController.login);
 
+/** Login atau daftar via Google OAuth — body: { accessToken: string } */
+router.post('/google', authController.googleAuth);
+
 /**
  * Perbarui access token menggunakan refresh token.
  * Body: { refreshToken: string }

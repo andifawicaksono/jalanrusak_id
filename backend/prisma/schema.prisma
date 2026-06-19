@@ -42,6 +42,13 @@ enum DamageType {
   @@map("damage_type")
 }
 
+enum AuthProvider {
+  LOCAL  @map("local")
+  GOOGLE @map("google")
+
+  @@map("auth_provider")
+}
+
 // ─── Models ───────────────────────────────────────────────────────
 
 model AppRole {
@@ -57,19 +64,21 @@ model AppRole {
 }
 
 model User {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name         String    @db.VarChar(100)
-  email        String    @unique @db.VarChar(100)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  role         Role?     @default(PUBLIC)
-  phone        String?   @db.VarChar(20)
-  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
-  roleId       String?   @map("role_id") @db.Uuid
-  isActive     Boolean?  @default(true) @map("is_active")
-  isVerified   Boolean?  @default(false) @map("is_verified")
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamp(6)
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String       @db.VarChar(100)
+  email        String       @unique @db.VarChar(100)
+  passwordHash String?      @map("password_hash") @db.VarChar(255)
+  provider     AuthProvider @default(LOCAL)
+  providerId   String?      @map("provider_id") @db.VarChar(255)
+  role         Role?        @default(PUBLIC)
+  phone        String?      @db.VarChar(20)
+  avatarUrl    String?      @map("avatar_url") @db.VarChar(500)
+  roleId       String?      @map("role_id") @db.Uuid
+  isActive     Boolean?     @default(true) @map("is_active")
+  isVerified   Boolean?     @default(false) @map("is_verified")
+  lastLoginAt  DateTime?    @map("last_login_at") @db.Timestamp(6)
+  createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime?    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   roleInfo      AppRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
   reports       Report[]

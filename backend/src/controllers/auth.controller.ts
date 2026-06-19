@@ -132,6 +132,46 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 /**
+ * POST /api/v1/auth/google
+ *
+ * Login atau daftar menggunakan Google OAuth.
+ * Body: { accessToken } — access token dari Google (diperoleh frontend via @react-oauth/google)
+ *
+ * Alur: verifikasi ke Google userinfo → cari/buat user → return JWT
+ */
+export async function googleAuth(req: Request, res: Response): Promise<void> {
+  const schema = z.object({
+    accessToken: z.string().min(1, 'Access token Google diperlukan'),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 'Access token tidak valid', 422, formatZodErrors(parsed.error));
+    return;
+  }
+
+  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+  const userAgent = req.headers['user-agent'] ?? null;
+
+  try {
+    const result = await authService.googleAuth(parsed.data.accessToken, { ipAddress, userAgent });
+    sendSuccess(res, result, 'Login dengan Google berhasil');
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('tidak valid') || error.message.includes('tidak terverifikasi')) {
+        sendError(res, error.message, 401);
+        return;
+      }
+      if (error.message.includes('dinonaktifkan')) {
+        sendError(res, error.message, 403);
+        return;
+      }
+    }
+    throw error;
+  }
+}
+
+/**
  * POST /api/v1/auth/logout  [Protected]
  *
  * Hapus session dari DB berdasarkan refresh token di body.

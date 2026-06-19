@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as authController from '../controllers/auth.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticateToken } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 
 const router = Router();
@@ -35,6 +35,9 @@ router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
 
 /** GET /api/v1/auth/me — Ambil data profil user yang sedang login */
-router.get('/me', authenticate, authController.getProfile);
+router.get('/me', authenticateToken, authController.getProfile);
+
+/** POST /api/v1/auth/google — Login atau daftar via Google OAuth */
+router.post('/google', authController.googleAuth);
 
 export default router;

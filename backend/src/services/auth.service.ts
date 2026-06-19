@@ -172,6 +172,121 @@ export async function login(input: LoginInput, meta: LoginMeta) {
   return { user: safeUser, accessToken, refreshToken };
 }
 
+// ─── Google OAuth ─────────────────────────────────────────────────
+
+interface GoogleUserInfo {
+  sub:            string;
+  email:          string;
+  email_verified: boolean;
+  name:           string;
+  picture?:       string;
+}
+
+/**
+ * Login atau daftar via Google OAuth.
+ *
+ * Alur:
+ *   1. Verifikasi access token ke Google userinfo endpoint
+ *   2. Cari user berdasarkan Google ID atau email
+ *   3. Jika tidak ada → buat akun baru (provider: GOOGLE, tanpa password)
+ *   4. Jika ada tapi belum terhubung → simpan providerId (link akun lokal)
+ *   5. Buat session dan return JWT — sama seperti login biasa
+ */
+export async function googleAuth(accessToken: string, meta: LoginMeta) {
+  // Step 1: Verifikasi dengan Google
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error('Token Google tidak valid atau sudah kadaluarsa');
+  }
+
+  const googleUser = (await res.json()) as GoogleUserInfo;
+
+  if (!googleUser.email || !googleUser.email_verified) {
+    throw new Error('Email Google tidak terverifikasi');
+  }
+
+  const email = googleUser.email.toLowerCase();
+
+  // Step 2: Cari user
+  let user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { providerId: googleUser.sub },
+        { email },
+      ],
+    },
+  });
+
+  // Step 3: Buat user baru jika belum terdaftar
+  if (!user) {
+    const publicRole = await prisma.appRole.findUnique({ where: { name: 'PUBLIC' } });
+
+    user = await prisma.user.create({
+      data: {
+        name:         googleUser.name,
+        email,
+        passwordHash: null,
+        provider:     'GOOGLE',
+        providerId:   googleUser.sub,
+        avatarUrl:    googleUser.picture ?? null,
+        isVerified:   true,
+        ...(publicRole ? { roleId: publicRole.id } : {}),
+      },
+    });
+  } else if (!user.providerId) {
+    // Step 4: Akun lokal sudah ada dengan email yang sama → link ke Google
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data:  { providerId: googleUser.sub },
+    });
+  }
+
+  if (!user.isActive) {
+    throw new Error('Akun Anda telah dinonaktifkan. Hubungi administrator.');
+  }
+
+  // Step 5: Generate token + buat session
+  const jwtAccess  = generateAccessToken(user.id, user.role as UserRole);
+  const jwtRefresh = generateRefreshToken(user.id);
+  const expiresAt  = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+  await Promise.all([
+    prisma.session.create({
+      data: {
+        userId:    user.id,
+        tokenHash: hashRefreshToken(jwtRefresh),
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        expiresAt,
+      },
+    }),
+    prisma.user.update({
+      where: { id: user.id },
+      data:  { lastLoginAt: new Date() },
+    }),
+  ]);
+
+  const safeUser = {
+    id:          user.id,
+    name:        user.name,
+    email:       user.email,
+    role:        user.role,
+    phone:       user.phone,
+    avatarUrl:   user.avatarUrl,
+    provider:    user.provider,
+    isActive:    user.isActive,
+    isVerified:  user.isVerified,
+    lastLoginAt: new Date(),
+    createdAt:   user.createdAt,
+    updatedAt:   user.updatedAt,
+  };
+
+  return { user: safeUser, accessToken: jwtAccess, refreshToken: jwtRefresh };
+}
+
 // ─── Logout ───────────────────────────────────────────────────────
 
 /**

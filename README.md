@@ -10,6 +10,7 @@ Aplikasi web fullstack untuk pelaporan dan pengelolaan kondisi jalan rusak. Warg
 - **RBAC** — tiga peran: `PUBLIC` (pelapor), `VERIFIER`, `ADMIN`
 - **Upload foto pintar** — kompresi otomatis ke WebP via Sharp, mendukung Local / MinIO / AWS S3
 - **Auth JWT** — access token (1 jam) + refresh token (7 hari) dengan rotasi session
+- **Login dengan Google** — OAuth 2.0; akun baru dibuat otomatis, akun lama ter-link berdasarkan email
 
 ## Tech Stack
 
@@ -21,7 +22,7 @@ Aplikasi web fullstack untuk pelaporan dan pengelolaan kondisi jalan rusak. Warg
 | Styling | Tailwind CSS · Shadcn/ui (Radix Primitives) |
 | Peta | Leaflet · react-leaflet · react-leaflet-cluster |
 | State | Zustand · SWR |
-| Auth | JWT (jsonwebtoken) · bcryptjs |
+| Auth | JWT (jsonwebtoken) · bcryptjs · Google OAuth 2.0 |
 | Upload | Multer · Sharp |
 | CI/CD | GitHub Actions → SSH → PM2 |
 
@@ -78,12 +79,16 @@ MAX_FILE_SIZE=10485760
 STORAGE_TYPE=local
 ```
 
+> Backend tidak membutuhkan `GOOGLE_CLIENT_ID`. Verifikasi token Google dilakukan langsung ke endpoint `https://www.googleapis.com/oauth2/v3/userinfo`.
+
 ```bash
 # Generate Prisma client
 npm run prisma:generate
 
 # Jalankan migrasi database
 npm run prisma:migrate
+# atau via SQL langsung:
+# psql -U postgres -d jalanrusak -f prisma/migrations/add_google_oauth.sql
 
 # (Opsional) Isi data awal
 npm run prisma:seed
@@ -112,6 +117,9 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 NEXT_PUBLIC_MAP_DEFAULT_LAT=-6.2088
 NEXT_PUBLIC_MAP_DEFAULT_LNG=106.8456
 NEXT_PUBLIC_MAP_DEFAULT_ZOOM=12
+
+# Google OAuth — dapatkan dari Google Cloud Console
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 ```
 
 ```bash
@@ -200,9 +208,10 @@ Semua response menggunakan format:
 | Method | Endpoint | Auth | Deskripsi |
 |---|---|---|---|
 | `POST` | `/auth/register` | — | Daftar akun baru |
-| `POST` | `/auth/login` | — | Login, dapat access + refresh token |
+| `POST` | `/auth/login` | — | Login email + password |
+| `POST` | `/auth/google` | — | Login / daftar via Google OAuth |
 | `POST` | `/auth/refresh` | — | Perbarui access token |
-| `GET` | `/auth/profile` | Bearer | Profil user aktif |
+| `GET` | `/auth/me` | Bearer | Profil user aktif |
 | `POST` | `/auth/logout` | Bearer | Invalidasi refresh token |
 
 **Body `POST /auth/register`:**
@@ -217,14 +226,24 @@ Semua response menggunakan format:
 Validasi password: min 8 karakter, 1 huruf kapital, 1 angka, 1 simbol.
 Validasi telepon: format Indonesia (`08xxx`, `+628xxx`, `628xxx`).
 
-**Response `POST /auth/login`:**
+**Body `POST /auth/google`:**
+```json
+{
+  "accessToken": "<Google OAuth access token dari frontend>"
+}
+```
+- Jika email belum terdaftar → buat akun baru dengan role `PUBLIC`, tanpa password.
+- Jika email sudah terdaftar → login dengan akun yang ada (link ke Google ID).
+- Respons identik dengan `/auth/login`.
+
+**Response `POST /auth/login` dan `POST /auth/google`:**
 ```json
 {
   "success": true,
   "data": {
     "accessToken": "eyJ...",
     "refreshToken": "eyJ...",
-    "user": { "id": "...", "name": "...", "email": "...", "role": "PUBLIC" }
+    "user": { "id": "...", "name": "...", "email": "...", "role": "PUBLIC", "provider": "GOOGLE" }
   }
 }
 ```
@@ -297,7 +316,7 @@ REJECTED    → (terminal, tidak bisa diubah)
 | `JWT_ACCESS_SECRET` | ✅ | — | Secret access token (min 32 karakter) |
 | `JWT_REFRESH_SECRET` | ✅ | — | Secret refresh token (berbeda dari access) |
 | `FRONTEND_URL` | ✅ | — | Origin untuk CORS |
-| `API_BASE_URL` | ✅ | — | Base URL untuk URL foto publik |
+| `API_BASE_URL` | ✅ | — | Base URL untuk URL foto publik — harus domain yang melayani `/uploads` |
 | `PORT` | — | `3001` | Port server |
 | `UPLOAD_DIR` | — | `uploads` | Folder upload lokal |
 | `MAX_FILE_SIZE` | — | `10485760` | Maks ukuran file (bytes) |
@@ -308,6 +327,7 @@ REJECTED    → (terminal, tidak bisa diubah)
 | Variabel | Wajib | Default | Deskripsi |
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | ✅ | — | URL backend API |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ✅ | — | Client ID dari Google Cloud Console (untuk tombol Login dengan Google) |
 | `NEXT_PUBLIC_MAP_DEFAULT_LAT` | — | `-6.2088` | Latitude pusat peta |
 | `NEXT_PUBLIC_MAP_DEFAULT_LNG` | — | `106.8456` | Longitude pusat peta |
 | `NEXT_PUBLIC_MAP_DEFAULT_ZOOM` | — | `12` | Zoom level peta |
@@ -318,11 +338,48 @@ REJECTED    → (terminal, tidak bisa diubah)
 
 | Peran | Kemampuan |
 |---|---|
-| `PUBLIC` | Daftar · Login · Buat laporan · Edit/hapus laporan sendiri |
+| `PUBLIC` | Daftar · Login (email atau Google) · Buat laporan · Edit/hapus laporan sendiri |
 | `VERIFIER` | Semua PUBLIC + Update status laporan · Akses dashboard admin |
 | `ADMIN` | Semua VERIFIER + Kelola user · Hapus laporan siapapun · Ubah peran user |
 
 > Akun VERIFIER dan ADMIN dibuat manual melalui Prisma Studio (`npm run prisma:studio`) atau query langsung ke database.
+> Akun yang dibuat via Google OAuth mendapat role `PUBLIC` secara default dan dapat di-upgrade oleh ADMIN.
+
+---
+
+## Setup Google OAuth
+
+### 1. Buat Credentials di Google Cloud Console
+
+1. Buka [console.cloud.google.com](https://console.cloud.google.com) → buat project baru (atau pilih yang ada)
+2. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth 2.0 Client ID**
+3. Application type: **Web application**
+4. Tambahkan **Authorized JavaScript Origins**:
+   - `http://localhost:3000` (development)
+   - `https://jalan-rusak.andifawicaksono.cloud` (production)
+5. Salin **Client ID** yang dihasilkan
+
+### 2. Tambahkan ke Environment
+
+```env
+# frontend/.env.local
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+```
+
+Backend **tidak** membutuhkan Google Client ID — verifikasi dilakukan dengan memanggil `https://www.googleapis.com/oauth2/v3/userinfo`.
+
+### 3. Jalankan Database Migration
+
+```bash
+# Lokal
+psql -U postgres -d jalanrusak -f backend/prisma/migrations/add_google_oauth.sql
+
+# Production VPS
+psql -U postgres -d jalanrusak -f /root/apps/jalanrusak_id/backend/prisma/migrations/add_google_oauth.sql
+
+# Lalu regenerate Prisma client (hentikan dev server dulu)
+cd backend && npm run prisma:generate
+```
 
 ---
 
@@ -375,30 +432,40 @@ Buat virtual host baru:
 ```
 
 ```apache
-# ── Frontend ──────────────────────────────────────────────────────
+# Single domain — frontend dan API di domain yang sama (path-based routing)
+# PENTING: urutan ProxyPass sangat menentukan — lebih spesifik harus di atas.
 <VirtualHost *:80>
     ServerName jalan-rusak.andifawicaksono.cloud
 
+    # Izinkan upload hingga 15MB
+    LimitRequestBody 15728640
+
     ProxyPreserveHost On
+
+    # 1. Static uploads backend — wajib sebelum ProxyPass /
+    ProxyPass        /uploads http://localhost:5000/uploads
+    ProxyPassReverse /uploads http://localhost:5000/uploads
+
+    # 2. API backend — wajib sebelum ProxyPass /
+    ProxyPass        /api/v1 http://localhost:5000/api/v1
+    ProxyPassReverse /api/v1 http://localhost:5000/api/v1
+
+    # 3. Frontend Next.js (catch-all, paling terakhir)
     ProxyPass        / http://localhost:3001/
     ProxyPassReverse / http://localhost:3001/
 
     RequestHeader set X-Forwarded-Proto "http"
 </VirtualHost>
+```
 
-# ── Backend API ───────────────────────────────────────────────────
-<VirtualHost *:80>
-    ServerName api.jalan-rusak.andifawicaksono.cloud
+Set env sesuai dengan konfigurasi di atas:
 
-    # Izinkan upload hingga 15MB (wajib! default Apache bisa lebih kecil)
-    LimitRequestBody 15728640
+```env
+# frontend/.env.local
+NEXT_PUBLIC_API_URL=https://jalan-rusak.andifawicaksono.cloud/api/v1
 
-    ProxyPreserveHost On
-    ProxyPass        / http://localhost:5000/
-    ProxyPassReverse / http://localhost:5000/
-
-    RequestHeader set X-Forwarded-Proto "http"
-</VirtualHost>
+# backend/.env
+API_BASE_URL=https://jalan-rusak.andifawicaksono.cloud
 ```
 
 ```bash
@@ -415,18 +482,14 @@ Pasang SSL dengan Certbot:
 ```bash
 # AlmaLinux
 dnf install -y python3-certbot-apache
-certbot --apache \
-  -d jalan-rusak.andifawicaksono.cloud \
-  -d api.jalan-rusak.andifawicaksono.cloud
+certbot --apache -d jalan-rusak.andifawicaksono.cloud
 
 # Ubuntu
 apt install -y python3-certbot-apache
-certbot --apache \
-  -d jalan-rusak.andifawicaksono.cloud \
-  -d api.jalan-rusak.andifawicaksono.cloud
+certbot --apache -d jalan-rusak.andifawicaksono.cloud
 ```
 
-> **Penting:** Setelah Certbot menambahkan blok SSL, pastikan `LimitRequestBody 15728640` juga ada di dalam blok `<VirtualHost *:443>` untuk domain API.
+> **Penting:** Setelah Certbot menambahkan blok `<VirtualHost *:443>`, pastikan `LimitRequestBody 15728640` dan urutan ProxyPass yang sama juga ada di blok HTTPS tersebut.
 
 ### CI/CD Otomatis (GitHub Actions)
 
