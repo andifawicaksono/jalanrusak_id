@@ -1,43 +1,18 @@
 import { Request, Response } from 'express';
 import { z, ZodError } from 'zod';
 import * as authService from '../services/auth.service';
+import * as auditService from '../services/audit.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../types';
+import { nameSchema, emailSchema, passwordSchema, phoneSchema } from '../utils/user.schema';
 
 // ─── Zod Schemas ──────────────────────────────────────────────────
-// Dideklarasikan di controller — dekat dengan handler yang menggunakannya.
 
-/**
- * Schema register:
- *   name     — min 3 karakter (nama orang asli, bukan singkatan)
- *   email    — valid RFC, di-lowercase otomatis
- *   password — min 8 + huruf kapital + angka + simbol (OWASP recommendation)
- *   phone    — format Indonesia opsional: 08xxx, +628xxx, 628xxx
- */
 const registerSchema = z.object({
-  name: z
-    .string({ required_error: 'Nama wajib diisi' })
-    .min(3, 'Nama minimal 3 karakter')
-    .max(100, 'Nama maksimal 100 karakter')
-    .trim(),
-  email: z
-    .string({ required_error: 'Email wajib diisi' })
-    .email('Format email tidak valid')
-    .toLowerCase()
-    .trim(),
-  password: z
-    .string({ required_error: 'Password wajib diisi' })
-    .min(8, 'Password minimal 8 karakter')
-    .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf kapital (A-Z)')
-    .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka (0-9)')
-    .regex(/[^A-Za-z0-9]/, 'Password harus mengandung minimal 1 simbol (!@#$%^& dll)'),
-  phone: z
-    .string()
-    .regex(
-      /^(\+62|62|0)\d{8,12}$/,
-      'Format nomor telepon tidak valid (contoh: 08123456789 atau +6281234567890)',
-    )
-    .optional(),
+  name:     nameSchema,
+  email:    emailSchema,
+  password: passwordSchema,
+  phone:    phoneSchema,
 });
 
 /** Schema login: email + password, tidak perlu cek format password (server yang menentukan) */
@@ -86,6 +61,15 @@ export async function register(req: Request, res: Response): Promise<void> {
 
   try {
     const result = await authService.register(parsed.data);
+    void auditService.createLog({
+      userId:      result.user.id,
+      action:      auditService.AUDIT_ACTION.AUTH_REGISTER,
+      entityType:  'user',
+      entityId:    result.user.id,
+      description: `User baru terdaftar: ${result.user.email}`,
+      ipAddress:   req.ip ?? req.socket.remoteAddress ?? null,
+      userAgent:   req.headers['user-agent'] ?? null,
+    });
     sendSuccess(res, result, 'Akun berhasil dibuat', 201);
   } catch (error) {
     if (error instanceof Error && error.message.includes('sudah terdaftar')) {
@@ -115,15 +99,24 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   try {
     const result = await authService.login(parsed.data, { ipAddress, userAgent });
+    void auditService.createLog({
+      userId:      result.user.id,
+      action:      auditService.AUDIT_ACTION.AUTH_LOGIN,
+      entityType:  'user',
+      entityId:    result.user.id,
+      description: `Login berhasil: ${result.user.email}`,
+      ipAddress,
+      userAgent,
+    });
     sendSuccess(res, result, 'Login berhasil');
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('Email atau password')) {
-        sendError(res, error.message, 401); // 401 Unauthorized
+        sendError(res, error.message, 401);
         return;
       }
-      if (error.message.includes('dinonaktifkan')) {
-        sendError(res, error.message, 403); // 403 Forbidden
+      if (error.message.includes('dinonaktifkan') || error.message.includes('diblokir')) {
+        sendError(res, error.message, 403);
         return;
       }
     }
@@ -155,6 +148,15 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
 
   try {
     const result = await authService.googleAuth(parsed.data.accessToken, { ipAddress, userAgent });
+    void auditService.createLog({
+      userId:      result.user.id,
+      action:      auditService.AUDIT_ACTION.AUTH_GOOGLE_LOGIN,
+      entityType:  'user',
+      entityId:    result.user.id,
+      description: `Login Google berhasil: ${result.user.email}`,
+      ipAddress,
+      userAgent,
+    });
     sendSuccess(res, result, 'Login dengan Google berhasil');
   } catch (error) {
     if (error instanceof Error) {
@@ -162,7 +164,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
         sendError(res, error.message, 401);
         return;
       }
-      if (error.message.includes('dinonaktifkan')) {
+      if (error.message.includes('dinonaktifkan') || error.message.includes('diblokir')) {
         sendError(res, error.message, 403);
         return;
       }
@@ -184,11 +186,19 @@ export async function logout(req: AuthRequest, res: Response): Promise<void> {
   const parsed = refreshSchema.safeParse(req.body);
 
   if (parsed.success) {
-    // Hapus session — abaikan error (session mungkin sudah expired)
     await authService.logout(parsed.data.refreshToken).catch(() => undefined);
   }
 
-  // Selalu sukses — client harus hapus token dari penyimpanannya sendiri
+  if (req.user?.userId) {
+    void auditService.createLog({
+      userId:      req.user.userId,
+      action:      auditService.AUDIT_ACTION.AUTH_LOGOUT,
+      description: 'User logout',
+      ipAddress:   req.ip ?? req.socket?.remoteAddress ?? null,
+      userAgent:   req.headers['user-agent'] ?? null,
+    });
+  }
+
   sendSuccess(res, null, 'Logout berhasil');
 }
 

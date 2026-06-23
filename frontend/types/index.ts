@@ -2,6 +2,8 @@
 
 export type UserRole = 'PUBLIC' | 'VERIFIER' | 'FIELD_VERIFIER' | 'ADMIN';
 
+export type AccountStatus = 'ACTIVE' | 'DISABLED' | 'BANNED';
+
 export interface RoleInfo {
   id: string;
   name: string;
@@ -10,16 +12,49 @@ export interface RoleInfo {
 }
 
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  roleInfo?: RoleInfo | null;
-  avatar?: string | null;
-  avatarUrl?: string | null;
-  phone?: string | null;
-  isActive?: boolean | null;
-  createdAt: string;
+  id:            string;
+  email:         string;
+  name:          string;
+  role:          UserRole;
+  roleInfo?:     RoleInfo | null;
+  avatar?:       string | null;
+  avatarUrl?:    string | null;
+  phone?:        string | null;
+  accountStatus?: AccountStatus;
+  isActive?:     boolean | null;
+  lastLoginAt?:  string | null;
+  createdAt:     string;
+}
+
+export interface AuditLog {
+  id:          string;
+  action:      string;
+  entityType:  string | null;
+  entityId:    string | null;
+  description: string | null;
+  ipAddress:   string | null;
+  createdAt:   string;
+  user: {
+    id:    string;
+    name:  string;
+    email: string;
+    role:  UserRole;
+  } | null;
+}
+
+export interface AdminStats {
+  total: number;
+  byRole: {
+    pelapor:       number;
+    verifier:      number;
+    fieldVerifier: number;
+    admin:         number;
+  };
+  byStatus: {
+    active:   number;
+    disabled: number;
+    banned:   number;
+  };
 }
 
 export interface AuthResponse {

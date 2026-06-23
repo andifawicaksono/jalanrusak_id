@@ -3,40 +3,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, UserPlus, AlertCircle, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-
-// ─── Validation Schema ─────────────────────────────────────────────
-
-const registerSchema = z
-  .object({
-    name:            z.string().min(3, 'Nama minimal 3 karakter').max(100, 'Nama maksimal 100 karakter'),
-    email:           z.string().email('Format email tidak valid'),
-    password:        z
-      .string()
-      .min(8, 'Password minimal 8 karakter')
-      .regex(/[A-Z]/, 'Harus mengandung huruf kapital (A-Z)')
-      .regex(/[0-9]/, 'Harus mengandung angka (0-9)')
-      .regex(/[^A-Za-z0-9]/, 'Harus mengandung simbol (!@#$%^& dll)'),
-    confirmPassword: z.string(),
-    phone:           z
-      .string()
-      .regex(
-        /^(\+62|62|0)\d{8,12}$/,
-        'Format tidak valid (contoh: 08123456789 atau +6281234567890)',
-      )
-      .optional()
-      .or(z.literal('')),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Konfirmasi password tidak sesuai',
-    path: ['confirmPassword'],
-  });
-
-type RegisterFormData = z.infer<typeof registerSchema>;
+import { registerSchema, PASSWORD_REQUIREMENTS, type RegisterFormData } from '@/lib/userValidation';
 
 // ─── Shared input class ────────────────────────────────────────────
 
@@ -60,12 +31,10 @@ export default function RegisterPage() {
 
   const passwordValue = watch('password', '');
 
-  const passwordRequirements = [
-    { label: 'Minimal 8 karakter',        met: passwordValue.length >= 8 },
-    { label: 'Huruf kapital (A–Z)',        met: /[A-Z]/.test(passwordValue) },
-    { label: 'Angka (0–9)',               met: /[0-9]/.test(passwordValue) },
-    { label: 'Simbol (!@#$%^& dll)',      met: /[^A-Za-z0-9]/.test(passwordValue) },
-  ];
+  const passwordRequirements = PASSWORD_REQUIREMENTS.map(({ label, test }) => ({
+    label,
+    met: test(passwordValue),
+  }));
 
   const onSubmit = async (data: RegisterFormData) => {
     await registerUser(data.name, data.email, data.password, data.phone);

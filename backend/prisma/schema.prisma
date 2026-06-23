@@ -50,6 +50,14 @@ enum AuthProvider {
   @@map("auth_provider")
 }
 
+enum AccountStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+  BANNED   @map("banned")
+
+  @@map("account_status")
+}
+
 // ─── Models ───────────────────────────────────────────────────────
 
 model AppRole {
@@ -74,8 +82,9 @@ model User {
   role         Role?        @default(PUBLIC)
   phone        String?      @db.VarChar(20)
   avatarUrl    String?      @map("avatar_url") @db.VarChar(500)
-  roleId       String?      @map("role_id") @db.Uuid
-  isActive     Boolean?     @default(true) @map("is_active")
+  roleId         String?        @map("role_id") @db.Uuid
+  accountStatus  AccountStatus  @default(ACTIVE) @map("account_status")
+  isActive       Boolean?       @default(true) @map("is_active")
   isVerified   Boolean?     @default(false) @map("is_verified")
   lastLoginAt  DateTime?    @map("last_login_at") @db.Timestamp(6)
   createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
@@ -85,9 +94,11 @@ model User {
   reports       Report[]
   statusChanges StatusHistory[]
   sessions      Session[]
+  auditLogs     AuditLog[]
 
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
+  @@index([accountStatus], map: "idx_users_account_status")
   @@map("users")
 }
 
@@ -197,4 +208,24 @@ model StatusHistory {
 
   @@index([reportId], map: "idx_status_history_report_id")
   @@map("report_status_history")
+}
+
+model AuditLog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  action      String    @db.VarChar(100)
+  entityType  String?   @map("entity_type") @db.VarChar(50)
+  entityId    String?   @map("entity_id") @db.VarChar(255)
+  description String?   @db.Text
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  userAgent   String?   @map("user_agent") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId],                   map: "idx_audit_logs_user_id")
+  @@index([action],                   map: "idx_audit_logs_action")
+  @@index([createdAt(sort: Desc)],    map: "idx_audit_logs_created_at")
+  @@index([entityType, entityId],     map: "idx_audit_logs_entity")
+  @@map("audit_logs")
 }

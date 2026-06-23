@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { DamageType, ReportStatus } from '@prisma/client';
 import { AuthRequest } from '../types';
 import * as reportService from '../services/report.service';
+import * as auditService from '../services/audit.service';
 import type { UploadedFile } from '../services/report.service';
 import { sendPaginated } from '../utils/response';
 
@@ -88,6 +89,17 @@ export async function createReport(req: AuthRequest, res: Response): Promise<voi
       files,
     });
 
+    if (report) {
+      void auditService.createLog({
+        userId:      req.user!.userId,
+        action:      auditService.AUDIT_ACTION.REPORT_CREATE,
+        entityType:  'report',
+        entityId:    report.id,
+        description: `Laporan dibuat: "${report.title}"`,
+        ipAddress:   req.ip ?? req.socket?.remoteAddress ?? null,
+        userAgent:   req.headers['user-agent'] ?? null,
+      });
+    }
     res.status(201).json({ message: 'Laporan berhasil dikirim', report });
   } catch (error) {
     console.error('[createReport]', error);
@@ -182,6 +194,19 @@ export async function updateReportStatus(req: AuthRequest, res: Response): Promi
       newStatus:       parsed.data.status,
       changedByUserId: req.user!.userId,
       notes:           parsed.data.notes,
+    });
+    const newStatus = parsed.data.status;
+    const auditAction = newStatus === 'VERIFIED'
+      ? auditService.AUDIT_ACTION.REPORT_VERIFY
+      : auditService.AUDIT_ACTION.REPORT_REJECT;
+    void auditService.createLog({
+      userId:      req.user!.userId,
+      action:      auditAction,
+      entityType:  'report',
+      entityId:    id,
+      description: `Status laporan diubah ke ${newStatus}`,
+      ipAddress:   req.ip ?? req.socket?.remoteAddress ?? null,
+      userAgent:   req.headers['user-agent'] ?? null,
     });
     res.json({ message: 'Status laporan berhasil diperbarui', report });
   } catch (error) {
@@ -316,6 +341,15 @@ export async function deleteReport(req: AuthRequest, res: Response): Promise<voi
     }
 
     await reportService.deleteReport(id);
+    void auditService.createLog({
+      userId:      req.user!.userId,
+      action:      auditService.AUDIT_ACTION.REPORT_DELETE,
+      entityType:  'report',
+      entityId:    id,
+      description: `Laporan dihapus: "${report.title}"`,
+      ipAddress:   req.ip ?? req.socket?.remoteAddress ?? null,
+      userAgent:   req.headers['user-agent'] ?? null,
+    });
     res.json({ message: 'Laporan berhasil dihapus' });
   } catch (error) {
     console.error('[deleteReport]', error);
@@ -365,6 +399,18 @@ export async function updateReportProgress(req: AuthRequest, res: Response): Pro
       newStatus:       parsed.data.status as 'IN_PROGRESS' | 'RESOLVED',
       notes:           parsed.data.notes,
       files,
+    });
+    const progressAction = parsed.data.status === 'IN_PROGRESS'
+      ? auditService.AUDIT_ACTION.REPORT_IN_PROGRESS
+      : auditService.AUDIT_ACTION.REPORT_RESOLVED;
+    void auditService.createLog({
+      userId:      req.user!.userId,
+      action:      progressAction,
+      entityType:  'report',
+      entityId:    id,
+      description: `Status laporan diubah ke ${parsed.data.status} dengan ${files.length} foto bukti`,
+      ipAddress:   req.ip ?? req.socket?.remoteAddress ?? null,
+      userAgent:   req.headers['user-agent'] ?? null,
     });
     res.json({ message: 'Status laporan berhasil diperbarui', report });
   } catch (error) {

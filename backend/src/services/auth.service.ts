@@ -126,8 +126,14 @@ export async function login(input: LoginInput, meta: LoginMeta) {
     throw new Error('Email atau password tidak valid');
   }
 
+  // Cek status akun SETELAH verifikasi password — jangan bocorkan status sebelum auth
+  if (user.accountStatus === 'DISABLED') {
+    throw new Error('Akun Anda telah dinonaktifkan.');
+  }
+  if (user.accountStatus === 'BANNED') {
+    throw new Error('Akun Anda telah diblokir.');
+  }
   if (!user.isActive) {
-    // Cek isActive SETELAH verifikasi password — jangan bocorkan status akun sebelum auth
     throw new Error('Akun Anda telah dinonaktifkan. Hubungi administrator.');
   }
 
@@ -244,6 +250,12 @@ export async function googleAuth(accessToken: string, meta: LoginMeta) {
     });
   }
 
+  if (user.accountStatus === 'DISABLED') {
+    throw new Error('Akun Anda telah dinonaktifkan.');
+  }
+  if (user.accountStatus === 'BANNED') {
+    throw new Error('Akun Anda telah diblokir.');
+  }
   if (!user.isActive) {
     throw new Error('Akun Anda telah dinonaktifkan. Hubungi administrator.');
   }
@@ -357,10 +369,10 @@ export async function refreshAccessToken(refreshToken: string) {
   // Step 4: Ambil data user terbaru (role, isActive bisa berubah)
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true, isActive: true },
+    select: { id: true, role: true, isActive: true, accountStatus: true },
   });
 
-  if (!user?.isActive) {
+  if (!user?.isActive || user.accountStatus === 'DISABLED' || user.accountStatus === 'BANNED') {
     await prisma.session.delete({ where: { tokenHash } });
     throw new Error('Akun tidak ditemukan atau tidak aktif');
   }

@@ -25,8 +25,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/reports',     label: 'Laporan Saya',    icon: FileText },
   { href: '/reports/new', label: 'Buat Laporan',    icon: Plus },
   { href: '/map',         label: 'Peta',            icon: Map },
-  { href: '/users',       label: 'Kelola User',     icon: Users, roles: ['ADMIN'] },
-  { href: '/settings',    label: 'Pengaturan',      icon: Settings },
+  // { href: '/users',       label: 'Kelola User',     icon: Users,     roles: ['ADMIN'] },
+  { href: '/settings',   label: 'Pengaturan',      icon: Settings,  roles: ['ADMIN'] },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────
