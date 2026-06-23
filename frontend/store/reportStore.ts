@@ -29,7 +29,7 @@ interface ReportState {
  * Store untuk manajemen laporan.
  * Tidak menggunakan persist — data selalu fresh dari server.
  */
-export const useReportStore = create<ReportState>((set, get) => ({
+export const useReportStore = create<ReportState>((set) => ({
   reports: [],
   selectedReport: null,
   isLoading: false,
@@ -94,17 +94,10 @@ export const useReportStore = create<ReportState>((set, get) => ({
   },
 
   deleteReport: async (id) => {
-    set({ isLoading: true, error: null });
-    try {
-      await apiClient.delete(`/reports/${id}`);
-      // Hapus dari daftar lokal tanpa perlu fetch ulang
-      set((state) => ({
-        reports: state.reports.filter((r) => r.id !== id),
-        isLoading: false,
-      }));
-    } catch {
-      set({ error: 'Gagal menghapus laporan', isLoading: false });
-    }
+    await apiClient.delete(`/reports/${id}`);
+    set((state) => ({
+      reports: state.reports.filter((r) => r.id !== id),
+    }));
   },
 
   clearError: () => set({ error: null }),
