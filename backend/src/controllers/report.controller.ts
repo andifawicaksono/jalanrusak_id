@@ -297,9 +297,22 @@ export async function deleteReport(req: AuthRequest, res: Response): Promise<voi
     }
 
     const { userId, role } = req.user!;
-    if (report.userId !== userId && role !== 'ADMIN') {
-      res.status(403).json({ error: 'Tidak diizinkan: hanya pemilik laporan atau admin yang dapat menghapus' });
+
+    if (role === 'VERIFIER') {
+      res.status(403).json({ error: 'Verifikator tidak memiliki izin untuk menghapus laporan' });
       return;
+    }
+
+    if (role !== 'ADMIN') {
+      if (report.userId !== userId) {
+        res.status(403).json({ error: 'Anda hanya dapat menghapus laporan milik Anda sendiri' });
+        return;
+      }
+      const deletableStatuses: ReportStatus[] = ['PENDING', 'REJECTED'];
+      if (!deletableStatuses.includes(report.status)) {
+        res.status(403).json({ error: 'Laporan yang sudah diverifikasi atau selesai tidak dapat dihapus' });
+        return;
+      }
     }
 
     await reportService.deleteReport(id);
