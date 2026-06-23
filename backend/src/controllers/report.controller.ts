@@ -298,8 +298,8 @@ export async function deleteReport(req: AuthRequest, res: Response): Promise<voi
 
     const { userId, role } = req.user!;
 
-    if (role === 'VERIFIER') {
-      res.status(403).json({ error: 'Verifikator tidak memiliki izin untuk menghapus laporan' });
+    if (role === 'VERIFIER' || role === 'FIELD_VERIFIER') {
+      res.status(403).json({ error: 'Anda tidak memiliki izin untuk menghapus laporan' });
       return;
     }
 
@@ -320,6 +320,66 @@ export async function deleteReport(req: AuthRequest, res: Response): Promise<voi
   } catch (error) {
     console.error('[deleteReport]', error);
     res.status(500).json({ error: 'Gagal menghapus laporan' });
+  }
+}
+
+// ─── updateReportProgress ─────────────────────────────────────────
+
+const updateProgressSchema = z.object({
+  status: z.enum(['IN_PROGRESS', 'RESOLVED']),
+  notes:  z.string().max(1000).trim().optional(),
+});
+
+/**
+ * POST /api/v1/reports/:id/progress
+ * Auth: ADMIN atau FIELD_VERIFIER
+ * Multipart: field 'photos' (1–5 foto bukti pekerjaan, wajib)
+ *
+ * Mengubah status laporan ke IN_PROGRESS atau RESOLVED.
+ * Foto bukti wajib diunggah; disimpan dan dikaitkan ke entri StatusHistory.
+ */
+export async function updateReportProgress(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params['id'] as string;
+
+  if (!z.string().uuid().safeParse(id).success) {
+    res.status(400).json({ error: 'ID laporan tidak valid' });
+    return;
+  }
+
+  const parsed = updateProgressSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ error: 'Data tidak valid', details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
+  const files = (req.files as UploadedFile[]) ?? [];
+  if (files.length === 0) {
+    res.status(422).json({ error: 'Minimal 1 foto bukti pekerjaan wajib diunggah' });
+    return;
+  }
+
+  try {
+    const report = await reportService.updateReportProgress({
+      reportId:        id,
+      changedByUserId: req.user!.userId,
+      newStatus:       parsed.data.status as 'IN_PROGRESS' | 'RESOLVED',
+      notes:           parsed.data.notes,
+      files,
+    });
+    res.json({ message: 'Status laporan berhasil diperbarui', report });
+  } catch (error) {
+    if (error instanceof Error) {
+      const isClientError =
+        error.message.startsWith('Laporan tidak ditemukan') ||
+        error.message.startsWith('Tidak dapat mengubah') ||
+        error.message.startsWith('Minimal 1 foto');
+      if (isClientError) {
+        res.status(422).json({ error: error.message });
+        return;
+      }
+    }
+    console.error('[updateReportProgress]', error);
+    res.status(500).json({ error: 'Gagal memperbarui status laporan' });
   }
 }
 
@@ -358,6 +418,41 @@ export async function getMyReports(req: AuthRequest, res: Response): Promise<voi
   } catch (error) {
     console.error('[getMyReports]', error);
     res.status(500).json({ error: 'Gagal mengambil laporan' });
+  }
+}
+
+// ─── getReportQueue ───────────────────────────────────────────────
+
+const getReportQueueSchema = z.object({
+  page:   z.coerce.number().int().min(1).optional().default(1),
+  limit:  z.coerce.number().int().min(1).max(50).optional().default(10),
+  search: z.string().max(100).trim().optional(),
+  status: z.nativeEnum(ReportStatus).optional(),
+});
+
+/**
+ * GET /api/v1/reports/queue
+ * Auth: ADMIN, FIELD_VERIFIER
+ * Seluruh laporan diurutkan berdasarkan prioritas kerja lapangan.
+ */
+export async function getReportQueue(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = getReportQueueSchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(422).json({ error: 'Parameter tidak valid', details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
+  try {
+    const result = await reportService.getReportQueue({
+      page:   parsed.data.page,
+      limit:  parsed.data.limit,
+      search: parsed.data.search,
+      status: parsed.data.status,
+    });
+    sendPaginated(res, result.reports, result.meta, 'Daftar laporan berhasil diambil');
+  } catch (error) {
+    console.error('[getReportQueue]', error);
+    res.status(500).json({ error: 'Gagal mengambil daftar laporan' });
   }
 }
 

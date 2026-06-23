@@ -289,6 +289,142 @@ export async function getUserReports(input: GetUserReportsInput) {
   };
 }
 
+// ─── getReportQueue (ADMIN + FIELD_VERIFIER: semua laporan) ───────
+
+export interface GetReportQueueInput {
+  page:    number;
+  limit:   number;
+  search?: string;
+  status?: ReportStatus;
+}
+
+interface RawQueueRow {
+  id:            string;
+  reportNumber:  string;
+  title:         string;
+  description:   string;
+  damageType:    string;
+  severity:      number | string;
+  status:        string;
+  address:       string;
+  latitude:      number | string;
+  longitude:     number | string;
+  isAnonymous:   boolean;
+  userId:        string;
+  reportedAt:    Date;
+  updatedAt:     Date;
+  userName:      string | null;
+  userAvatar:    string | null;
+  photoId:       string | null;
+  photoUrl:      string | null;
+  photoFilename: string | null;
+}
+
+/**
+ * Seluruh laporan (tanpa filter userId) dengan priority sort bawaan:
+ * VERIFIED → IN_PROGRESS → PENDING → RESOLVED → REJECTED.
+ * Dipakai oleh endpoint GET /reports/queue — hanya ADMIN dan FIELD_VERIFIER.
+ * Menggunakan $queryRaw karena Prisma ORM tidak mendukung CASE di ORDER BY.
+ */
+export async function getReportQueue(input: GetReportQueueInput) {
+  const { page, limit, search, status } = input;
+  const offset = (page - 1) * limit;
+
+  // Count via ORM (tidak perlu custom ORDER BY)
+  const where: Prisma.ReportWhereInput = {
+    ...(status && { status }),
+    ...(search && {
+      OR: [
+        { title:       { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { address:     { contains: search, mode: 'insensitive' } },
+      ],
+    }),
+  };
+  const total = await prisma.report.count({ where });
+
+  // Conditional SQL fragments untuk filter dinamis
+  const statusFilter = status
+    ? Prisma.sql`AND r.status = ${status.toLowerCase()}::report_status`
+    : Prisma.sql``;
+
+  const searchParam   = search ? `%${search}%` : null;
+  const searchFilter  = searchParam
+    ? Prisma.sql`AND (
+        r.title       ILIKE ${searchParam}
+        OR r.description ILIKE ${searchParam}
+        OR r.address     ILIKE ${searchParam}
+      )`
+    : Prisma.sql``;
+
+  const rows = await prisma.$queryRaw<RawQueueRow[]>(Prisma.sql`
+    SELECT
+      r.id,
+      r.report_number                                                          AS "reportNumber",
+      r.title,
+      r.description,
+      r.damage_type::text                                                      AS "damageType",
+      r.severity,
+      r.status::text                                                           AS status,
+      r.address,
+      r.latitude::float8                                                       AS latitude,
+      r.longitude::float8                                                      AS longitude,
+      r.is_anonymous                                                           AS "isAnonymous",
+      r.user_id                                                                AS "userId",
+      r.reported_at                                                            AS "reportedAt",
+      r.updated_at                                                             AS "updatedAt",
+      u.name                                                                   AS "userName",
+      u.avatar_url                                                             AS "userAvatar",
+      (SELECT p.id       FROM report_photos p WHERE p.report_id = r.id AND p.is_primary = true LIMIT 1) AS "photoId",
+      (SELECT p.url      FROM report_photos p WHERE p.report_id = r.id AND p.is_primary = true LIMIT 1) AS "photoUrl",
+      (SELECT p.filename FROM report_photos p WHERE p.report_id = r.id AND p.is_primary = true LIMIT 1) AS "photoFilename"
+    FROM road_reports r
+    LEFT JOIN users u ON u.id = r.user_id
+    WHERE 1=1
+    ${statusFilter}
+    ${searchFilter}
+    ORDER BY
+      CASE r.status
+        WHEN 'verified'    THEN 1
+        WHEN 'in_progress' THEN 2
+        WHEN 'pending'     THEN 3
+        WHEN 'resolved'    THEN 4
+        WHEN 'rejected'    THEN 5
+        ELSE 6
+      END,
+      r.reported_at DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const reports = rows.map((r) => ({
+    id:          r.id,
+    reportNumber: r.reportNumber,
+    title:        r.title,
+    description:  r.description,
+    damageType:   r.damageType.toUpperCase() as DamageType,
+    severity:     Number(r.severity),
+    status:       r.status.toUpperCase() as ReportStatus,
+    address:      r.address,
+    latitude:     Number(r.latitude),
+    longitude:    Number(r.longitude),
+    isAnonymous:  r.isAnonymous,
+    userId:       r.userId,
+    createdAt:    r.reportedAt instanceof Date ? r.reportedAt.toISOString() : String(r.reportedAt),
+    updatedAt:    r.updatedAt  instanceof Date ? r.updatedAt.toISOString()  : String(r.updatedAt),
+    user: r.userName
+      ? { id: r.userId, name: r.userName, avatar: r.userAvatar ?? null }
+      : null,
+    photos: r.photoId
+      ? [{ id: r.photoId, url: r.photoUrl!, filename: r.photoFilename!, reportId: r.id }]
+      : [],
+  }));
+
+  return { reports, meta: { page, limit, total, totalPages } };
+}
+
 // ─── getReportById ────────────────────────────────────────────────
 
 /**
@@ -331,6 +467,10 @@ export async function getReportById(id: string) {
             changedAt: true,
             user: {
               select: { id: true, name: true, role: true },
+            },
+            proofPhotos: {
+              select:  { id: true, url: true },
+              orderBy: { orderIndex: 'asc' },
             },
           },
         },
@@ -421,6 +561,82 @@ export async function updateReportStatus(input: UpdateStatusInput) {
         oldStatus: current.status,
         newStatus,
         notes:     notes ?? null,
+      },
+    }),
+  ]);
+
+  return updatedReport;
+}
+
+// ─── updateReportProgress (field verifier — foto wajib) ──────────
+
+export interface UpdateProgressInput {
+  reportId:        string;
+  changedByUserId: string;
+  newStatus:       'IN_PROGRESS' | 'RESOLVED';
+  notes?:          string;
+  files:           UploadedFile[];
+}
+
+const PROGRESS_TRANSITIONS: Record<string, string[]> = {
+  VERIFIED:    ['IN_PROGRESS'],
+  IN_PROGRESS: ['RESOLVED'],
+};
+
+/**
+ * Update status laporan ke IN_PROGRESS atau RESOLVED oleh Verifikator Lapangan / Admin.
+ * Membutuhkan minimal 1 foto bukti pekerjaan yang dikaitkan ke entri StatusHistory.
+ */
+export async function updateReportProgress(input: UpdateProgressInput) {
+  const { reportId, changedByUserId, newStatus, notes, files } = input;
+
+  const current = await prisma.report.findUnique({
+    where:  { id: reportId },
+    select: { id: true, status: true },
+  });
+
+  if (!current) throw new Error('Laporan tidak ditemukan');
+
+  const allowed = PROGRESS_TRANSITIONS[current.status] ?? [];
+  if (!allowed.includes(newStatus)) {
+    throw new Error(
+      `Tidak dapat mengubah status dari ${current.status} ke ${newStatus}. ` +
+      `Pastikan laporan sudah dalam status yang sesuai.`,
+    );
+  }
+
+  if (files.length === 0) {
+    throw new Error('Minimal 1 foto bukti pekerjaan wajib diunggah');
+  }
+
+  const [updatedReport] = await prisma.$transaction([
+    prisma.report.update({
+      where: { id: reportId },
+      data:  { status: newStatus },
+      include: {
+        photos: { where: { isPrimary: true }, select: { id: true, url: true }, take: 1 },
+        region: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.statusHistory.create({
+      data: {
+        reportId,
+        changedBy: changedByUserId,
+        oldStatus: current.status,
+        newStatus,
+        notes:     notes ?? null,
+        proofPhotos: {
+          create: files.map((file, idx) => ({
+            reportId,
+            url:         file.path,
+            storagePath: file.filename,
+            filename:    file.originalname,
+            fileSize:    file.size,
+            mimeType:    file.mimetype,
+            orderIndex:  idx,
+            isPrimary:   false,
+          })),
+        },
       },
     }),
   ]);

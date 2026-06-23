@@ -4,7 +4,7 @@ import { JwtPayload } from 'jsonwebtoken';
 // ─── Role ─────────────────────────────────────────────────────────
 
 /** Role pengguna — harus sinkron dengan enum Role di Prisma schema */
-export type UserRole = 'PUBLIC' | 'VERIFIER' | 'ADMIN';
+export type UserRole = 'PUBLIC' | 'VERIFIER' | 'FIELD_VERIFIER' | 'ADMIN';
 
 // ─── JWT Payload Types ────────────────────────────────────────────
 

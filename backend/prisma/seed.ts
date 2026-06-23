@@ -13,7 +13,12 @@ const ROLES = [
   {
     name: 'VERIFIER',
     displayName: 'Admin Verifikator',
-    description: 'Petugas yang dapat memverifikasi laporan dan mengubah status perbaikan',
+    description: 'Petugas yang dapat memverifikasi laporan (PENDING → VERIFIED) dan menolak laporan',
+  },
+  {
+    name: 'FIELD_VERIFIER',
+    displayName: 'Verifikator Lapangan',
+    description: 'Petugas lapangan yang menangani perbaikan jalan — dapat mengubah status ke IN_PROGRESS dan RESOLVED dengan bukti foto',
   },
   {
     name: 'ADMIN',

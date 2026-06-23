@@ -14,9 +14,10 @@ datasource db {
 // ─── Enums ────────────────────────────────────────────────────────
 
 enum Role {
-  PUBLIC   @map("public")
-  VERIFIER @map("verifier")
-  ADMIN    @map("admin")
+  PUBLIC          @map("public")
+  VERIFIER        @map("verifier")
+  FIELD_VERIFIER  @map("field_verifier")
+  ADMIN           @map("admin")
 
   @@map("user_role")
 }
@@ -160,21 +161,24 @@ model Report {
 }
 
 model Photo {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  reportId    String    @map("report_id") @db.Uuid
-  url         String    @db.VarChar(500)
-  storagePath String?   @map("storage_path") @db.VarChar(500)
-  filename    String?   @db.VarChar(255)
-  fileSize    Int?      @map("file_size")
-  mimeType    String?   @map("mime_type") @db.VarChar(50)
-  orderIndex  Int?      @default(0) @map("order_index") @db.SmallInt
-  isPrimary   Boolean?  @default(false) @map("is_primary")
-  uploadedAt  DateTime? @default(now()) @map("uploaded_at") @db.Timestamp(6)
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reportId          String    @map("report_id") @db.Uuid
+  statusHistoryId   String?   @map("status_history_id") @db.Uuid
+  url               String    @db.VarChar(500)
+  storagePath       String?   @map("storage_path") @db.VarChar(500)
+  filename          String?   @db.VarChar(255)
+  fileSize          Int?      @map("file_size")
+  mimeType          String?   @map("mime_type") @db.VarChar(50)
+  orderIndex        Int?      @default(0) @map("order_index") @db.SmallInt
+  isPrimary         Boolean?  @default(false) @map("is_primary")
+  uploadedAt        DateTime? @default(now()) @map("uploaded_at") @db.Timestamp(6)
 
-  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  report        Report         @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  statusHistory StatusHistory? @relation(fields: [statusHistoryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([reportId, isPrimary], map: "idx_photos_is_primary")
   @@index([reportId], map: "idx_photos_report_id")
+  @@index([statusHistoryId], map: "idx_photos_status_history_id")
   @@map("report_photos")
 }
 
@@ -187,8 +191,9 @@ model StatusHistory {
   notes     String?
   changedAt DateTime?     @default(now()) @map("changed_at") @db.Timestamp(6)
 
-  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user   User?  @relation(fields: [changedBy], references: [id], onUpdate: NoAction)
+  report      Report  @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user        User?   @relation(fields: [changedBy], references: [id], onUpdate: NoAction)
+  proofPhotos Photo[]
 
   @@index([reportId], map: "idx_status_history_report_id")
   @@map("report_status_history")

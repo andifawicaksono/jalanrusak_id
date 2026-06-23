@@ -85,17 +85,19 @@ export function getSeverityMapColor(severity: number): string {
 /** Kembalikan nama tampilan role yang ramah untuk pengguna */
 export function getRoleDisplayName(role: UserRole): string {
   const names: Record<UserRole, string> = {
-    PUBLIC:   'Pelapor',
-    VERIFIER: 'Admin Verifikator',
-    ADMIN:    'Super Admin',
+    PUBLIC:         'Pelapor',
+    VERIFIER:       'Admin Verifikator',
+    FIELD_VERIFIER: 'Verifikator Lapangan',
+    ADMIN:          'Super Admin',
   };
   return names[role];
 }
 
 /** Kembalikan class Tailwind untuk badge role (dark-mode) */
 export function getRoleBadgeClass(role: UserRole): string {
-  if (role === 'ADMIN')    return 'bg-purple-500/15 text-purple-400 border-purple-500/20';
-  if (role === 'VERIFIER') return 'bg-blue-500/15 text-blue-400 border-blue-500/20';
+  if (role === 'ADMIN')          return 'bg-purple-500/15 text-purple-400 border-purple-500/20';
+  if (role === 'VERIFIER')       return 'bg-blue-500/15 text-blue-400 border-blue-500/20';
+  if (role === 'FIELD_VERIFIER') return 'bg-orange-500/15 text-orange-400 border-orange-500/20';
   return 'bg-slate-700/50 text-slate-400 border-slate-600/50';
 }
 

@@ -38,6 +38,13 @@ router.get('/', reportController.getReports);
 router.get('/my', authenticateToken, reportController.getMyReports);
 
 /**
+ * GET /api/v1/reports/queue
+ * Seluruh laporan diurutkan berdasarkan prioritas kerja — hanya ADMIN dan FIELD_VERIFIER.
+ * Query: page, limit, search, status
+ */
+router.get('/queue', authenticateToken, requireRole('ADMIN', 'FIELD_VERIFIER'), reportController.getReportQueue);
+
+/**
  * GET /api/v1/reports/:id
  * Detail laporan — menaikkan viewsCount secara atomik (publik).
  * optionalAuth: jika ada token yang valid, user context tersedia di controller.
@@ -55,6 +62,20 @@ router.post(
   authenticateToken,
   uploadReportPhotos,
   reportController.createReport,
+);
+
+/**
+ * POST /api/v1/reports/:id/progress
+ * Update status ke IN_PROGRESS atau RESOLVED oleh Verifikator Lapangan / Admin.
+ * Multipart: field 'photos' (1–5 foto bukti pekerjaan, wajib), body: { status, notes? }
+ * uploadReportPhotos dijalankan dulu agar body multipart terparse sebelum Zod.
+ */
+router.post(
+  '/:id/progress',
+  authenticateToken,
+  requireRole('ADMIN', 'FIELD_VERIFIER'),
+  uploadReportPhotos,
+  reportController.updateReportProgress,
 );
 
 /**

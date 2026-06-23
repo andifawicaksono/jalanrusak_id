@@ -1,6 +1,6 @@
 // ─── Auth Types ───────────────────────────────────────────────────
 
-export type UserRole = 'PUBLIC' | 'VERIFIER' | 'ADMIN';
+export type UserRole = 'PUBLIC' | 'VERIFIER' | 'FIELD_VERIFIER' | 'ADMIN';
 
 export interface RoleInfo {
   id: string;
@@ -93,6 +93,7 @@ export interface StatusHistoryEntry {
   notes: string | null;
   changedAt: string;
   user: { id: string; name: string; role: string } | null;
+  proofPhotos: { id: string; url: string }[];
 }
 
 /** Detail laporan lengkap — dari endpoint GET /reports/:id */

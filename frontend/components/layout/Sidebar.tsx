@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, FileText, Plus, MapPin,
-  Settings, LogOut, Users, Map,
+  Settings, LogOut, Users, Map, ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, getRoleDisplayName, getRoleBadgeClass } from '@/lib/utils';
@@ -20,12 +20,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Dashboard',    icon: LayoutDashboard, roles: ['ADMIN', 'VERIFIER'] },
-  { href: '/reports',     label: 'Laporan Saya', icon: FileText },
-  { href: '/reports/new', label: 'Buat Laporan', icon: Plus },
-  { href: '/map',         label: 'Peta',         icon: Map },
-  { href: '/users',       label: 'Kelola User',  icon: Users, roles: ['ADMIN'] },
-  { href: '/settings',    label: 'Pengaturan',   icon: Settings },
+  { href: '/dashboard',   label: 'Dashboard',       icon: LayoutDashboard, roles: ['ADMIN', 'VERIFIER'] },
+  { href: '/lapangan',    label: 'Antrian Laporan', icon: ClipboardList,   roles: ['ADMIN', 'FIELD_VERIFIER'] },
+  { href: '/reports',     label: 'Laporan Saya',    icon: FileText },
+  { href: '/reports/new', label: 'Buat Laporan',    icon: Plus },
+  { href: '/map',         label: 'Peta',            icon: Map },
+  { href: '/users',       label: 'Kelola User',     icon: Users, roles: ['ADMIN'] },
+  { href: '/settings',    label: 'Pengaturan',      icon: Settings },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────

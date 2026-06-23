@@ -36,11 +36,12 @@ export default function ReportCard({ report, showActions = true, onDeleteSuccess
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDeleting, setIsDeleting]   = useState(false);
 
-  const isAdmin    = user?.role === 'ADMIN';
-  const isVerifier = user?.role === 'VERIFIER';
-  const isOwner    = user?.id === report.userId;
-  const ownerCanDelete = isOwner && !isVerifier && DELETABLE_STATUSES.includes(report.status as typeof DELETABLE_STATUSES[number]);
-  const canDelete  = showActions && (isAdmin || ownerCanDelete);
+  const isAdmin         = user?.role === 'ADMIN';
+  const isVerifier      = user?.role === 'VERIFIER';
+  const isFieldVerifier = user?.role === 'FIELD_VERIFIER';
+  const isOwner         = user?.id === report.userId;
+  const ownerCanDelete  = isOwner && !isVerifier && !isFieldVerifier && DELETABLE_STATUSES.includes(report.status as typeof DELETABLE_STATUSES[number]);
+  const canDelete       = showActions && (isAdmin || ownerCanDelete);
 
   const firstPhoto = report.photos?.[0];
   const { width: severityWidth, color: severityColor } = getSeverityBar(report.severity);
