@@ -1,16 +1,22 @@
 # JalanRusak — Platform Pelaporan Jalan Rusak Berbasis Komunitas
 
-Aplikasi web fullstack untuk pelaporan dan pengelolaan kondisi jalan rusak. Warga dapat mengirim laporan lengkap dengan foto dan lokasi GPS; verifikator dan admin mengelola status penanganan.
+Aplikasi web fullstack untuk pelaporan dan pengelolaan kondisi jalan rusak. Warga dapat mengirim laporan lengkap dengan foto dan lokasi GPS; verifikator lapangan, verifikator admin, dan super admin mengelola status penanganan.
 
 ## Fitur Utama
 
 - **Pelaporan geotagged** — pin lokasi di peta interaktif + foto bukti (kamera langsung atau gallery)
 - **Peta laporan real-time** — marker berkluster berdasarkan viewport, filter severity & tipe kerusakan
 - **Alur status penanganan** — `PENDING → VERIFIED → IN_PROGRESS → RESOLVED | REJECTED`
-- **RBAC** — tiga peran: `PUBLIC` (pelapor), `VERIFIER`, `ADMIN`
+- **Progress penanganan dengan bukti foto** — petugas lapangan wajib upload foto saat mengubah status ke `IN_PROGRESS` dan `RESOLVED`
+- **Antrian laporan lapangan** — halaman khusus Verifikator Lapangan dengan prioritas otomatis (`VERIFIED → IN_PROGRESS → PENDING → ...`)
+- **RBAC 4 peran** — `PUBLIC`, `VERIFIER` (admin), `FIELD_VERIFIER` (lapangan), `ADMIN` (super admin)
+- **Manajemen user** — Super Admin dapat membuat, mengedit, mengubah role, dan mengelola status akun user (`ACTIVE / DISABLED / BANNED`)
+- **Audit Log** — Setiap aktivitas kritis (login, ubah role, verifikasi laporan, dll) dicatat otomatis dan dapat dilihat di halaman Settings
+- **Validasi status akun** — user dengan status `DISABLED` atau `BANNED` diblokir saat login (termasuk Google OAuth dan refresh token)
 - **Upload foto pintar** — kompresi otomatis ke WebP via Sharp, mendukung Local / MinIO / AWS S3
 - **Auth JWT** — access token (1 jam) + refresh token (7 hari) dengan rotasi session
 - **Login dengan Google** — OAuth 2.0; akun baru dibuat otomatis, akun lama ter-link berdasarkan email
+- **Shared validation** — aturan validasi password/email/nama digunakan bersama di Register, Create User, dan Edit User
 
 ## Tech Stack
 
@@ -24,6 +30,7 @@ Aplikasi web fullstack untuk pelaporan dan pengelolaan kondisi jalan rusak. Warg
 | State | Zustand · SWR |
 | Auth | JWT (jsonwebtoken) · bcryptjs · Google OAuth 2.0 |
 | Upload | Multer · Sharp |
+| Form | react-hook-form · Zod |
 | CI/CD | GitHub Actions → SSH → PM2 |
 
 ---
@@ -85,10 +92,16 @@ STORAGE_TYPE=local
 # Generate Prisma client
 npm run prisma:generate
 
-# Jalankan migrasi database
+# Jalankan migrasi database awal
 npm run prisma:migrate
-# atau via SQL langsung:
-# psql -U postgres -d jalanrusak -f prisma/migrations/add_google_oauth.sql
+
+# Jalankan migrasi fitur tambahan (Google OAuth, Field Verifier, Settings)
+psql -U postgres -d jalanrusak -f prisma/migrations/add_google_oauth.sql
+psql -U postgres -d jalanrusak -f prisma/migrations/add_field_verifier.sql
+psql -U postgres -d jalanrusak -f prisma/migrations/add_settings_features.sql
+
+# Regenerate Prisma client setelah migrasi manual (hentikan dev server dulu)
+npm run prisma:generate
 
 # (Opsional) Isi data awal
 npm run prisma:seed
@@ -166,21 +179,38 @@ jalanrusak_id/
 │   ├── services/       # Business logic + Prisma queries
 │   ├── routes/         # Registrasi endpoint Express
 │   ├── middleware/     # Auth, upload (Multer+Sharp), validasi (Zod), error handler
-│   ├── utils/          # jwt.util, response helper, storage abstraction, password
+│   ├── utils/          # jwt.util, response helper, storage abstraction, user.schema (shared Zod)
 │   └── index.ts        # Entry point — setup Express, CORS, static files
+├── backend/prisma/
+│   ├── schema.prisma                     # Definisi model Prisma
+│   └── migrations/
+│       ├── add_google_oauth.sql          # Kolom provider + provider_id
+│       ├── add_field_verifier.sql        # Enum field_verifier
+│       └── add_settings_features.sql    # Kolom account_status + tabel audit_logs
 ├── frontend/
 │   ├── app/
-│   │   ├── (public)/   # Halaman publik: landing (/), peta (/map), laporan (/reports)
-│   │   ├── (auth)/     # Login, register (unauthenticated only)
-│   │   └── (dashboard)/ # Halaman terproteksi: dashboard, buat laporan, kelola user
+│   │   ├── (public)/       # Halaman publik: landing, peta, daftar laporan, detail laporan
+│   │   ├── (auth)/         # Login, register (unauthenticated only)
+│   │   └── (dashboard)/    # Halaman terproteksi:
+│   │       ├── dashboard/      # Ringkasan admin/verifier
+│   │       ├── lapangan/       # Antrian laporan (FIELD_VERIFIER + ADMIN)
+│   │       ├── reports/        # Laporan saya + wizard buat laporan
+│   │       ├── users/          # Kelola user (legacy, digantikan settings)
+│   │       └── settings/       # Super Admin only
+│   │           ├── page.tsx           # Statistik overview
+│   │           ├── users/page.tsx     # Manajemen user (create, edit, role, status)
+│   │           └── audit-logs/page.tsx # Audit log viewer
 │   ├── components/
 │   │   ├── layout/     # Navbar, Sidebar
 │   │   ├── map/        # Komponen Leaflet (semua dynamic import ssr:false)
-│   │   ├── reports/    # Wizard laporan: LocationPicker, DamageForm, PhotoUpload
+│   │   ├── reports/    # Wizard laporan: LocationPicker, DamageForm, PhotoUpload, ReportCard
 │   │   └── dashboard/  # Tabel laporan, stats, modal status
+│   ├── lib/
+│   │   ├── axios.ts          # apiClient singleton + interceptor auth
+│   │   ├── utils.ts          # Helper: formatDate, getRoleDisplayName, getRoleBadgeClass, dll
+│   │   └── userValidation.ts # Shared Zod schemas: registerSchema, adminCreateUserSchema, adminEditUserSchema
 │   ├── store/          # Zustand: authStore, reportStore, reportFormStore
-│   ├── lib/            # apiClient (axios), utils
-│   └── types/          # TypeScript type definitions
+│   └── types/          # TypeScript type definitions (User, Report, AuditLog, AdminStats, dll)
 ├── ecosystem.config.js  # Konfigurasi PM2 production
 └── .github/workflows/   # GitHub Actions CI/CD
 ```
@@ -226,64 +256,34 @@ Semua response menggunakan format:
 Validasi password: min 8 karakter, 1 huruf kapital, 1 angka, 1 simbol.
 Validasi telepon: format Indonesia (`08xxx`, `+628xxx`, `628xxx`).
 
-**Body `POST /auth/google`:**
-```json
-{
-  "accessToken": "<Google OAuth access token dari frontend>"
-}
-```
-- Jika email belum terdaftar → buat akun baru dengan role `PUBLIC`, tanpa password.
-- Jika email sudah terdaftar → login dengan akun yang ada (link ke Google ID).
-- Respons identik dengan `/auth/login`.
-
-**Response `POST /auth/login` dan `POST /auth/google`:**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJ...",
-    "refreshToken": "eyJ...",
-    "user": { "id": "...", "name": "...", "email": "...", "role": "PUBLIC", "provider": "GOOGLE" }
-  }
-}
-```
+> Login akan mengembalikan error `403` jika akun berstatus `DISABLED` ("Akun Anda telah dinonaktifkan.") atau `BANNED` ("Akun Anda telah diblokir."). Berlaku juga untuk Google OAuth dan refresh token.
 
 ### Laporan
 
 | Method | Endpoint | Auth | Deskripsi |
 |---|---|---|---|
-| `GET` | `/reports` | — | Daftar laporan (paginasi + filter) |
-| `GET` | `/reports/:id` | Opsional | Detail laporan |
+| `GET` | `/reports` | — | Daftar laporan publik (cursor-based pagination) |
 | `GET` | `/reports/map-markers` | — | Marker dalam bounding box |
 | `GET` | `/reports/nearby` | — | Laporan terdekat dari koordinat |
+| `GET` | `/reports/my` | Bearer | Laporan milik user sendiri (page-based) |
+| `GET` | `/reports/queue` | VERIFIER/FIELD_VERIFIER/ADMIN | Antrian laporan berurutan prioritas |
+| `GET` | `/reports/:id` | Opsional | Detail laporan |
 | `POST` | `/reports` | Bearer | Buat laporan baru (`multipart/form-data`) |
-| `PATCH` | `/reports/:id` | Bearer | Edit laporan (pemilik atau ADMIN) |
 | `PATCH` | `/reports/:id/status` | VERIFIER/ADMIN | Update status laporan |
+| `POST` | `/reports/:id/progress` | FIELD_VERIFIER/ADMIN | Update progress dengan foto bukti |
 | `DELETE` | `/reports/:id` | Bearer | Hapus laporan |
 
-**Query `GET /reports`:**
+**Query `GET /reports/queue`:**
 ```
-cursor, limit, status, damageType, severity, regionId, dateFrom, dateTo, search
+page, limit, search, status
 ```
+Diurutkan otomatis: `VERIFIED → IN_PROGRESS → PENDING → RESOLVED → REJECTED`
 
-**Query `GET /reports/map-markers`:**
+**Body `POST /reports/:id/progress` (multipart/form-data):**
 ```
-swLat, swLng, neLat, neLng  (bounding box, semua wajib)
-```
-
-**Query `GET /reports/nearby`:**
-```
-lat, lng, radius (meter, default 2000), limit (default 20)
-```
-
-**Body `POST /reports` (multipart/form-data):**
-```
-title, description, latitude, longitude, address
-damageType: BERLUBANG | RETAK | AMBLAS | BANJIR | LONGSOR | LAINNYA
-severity: 1–5
-isAnonymous: true | false
-regionId (opsional)
-photos[]: 1–5 file, maks 10MB/file, format JPEG/PNG/WebP
+status: IN_PROGRESS | RESOLVED
+notes (opsional)
+photos[]: 1–5 foto wajib sebagai bukti penanganan
 ```
 
 **Transisi status yang valid:**
@@ -291,8 +291,8 @@ photos[]: 1–5 file, maks 10MB/file, format JPEG/PNG/WebP
 PENDING     → VERIFIED, REJECTED
 VERIFIED    → IN_PROGRESS, REJECTED
 IN_PROGRESS → RESOLVED, REJECTED
-RESOLVED    → (terminal, tidak bisa diubah)
-REJECTED    → (terminal, tidak bisa diubah)
+RESOLVED    → (terminal)
+REJECTED    → (terminal)
 ```
 
 ### User
@@ -303,6 +303,61 @@ REJECTED    → (terminal, tidak bisa diubah)
 | `GET` | `/users/:id` | Bearer | Detail user |
 | `PATCH` | `/users/:id` | Bearer | Update profil |
 | `PATCH` | `/users/:id/role` | ADMIN | Ubah peran user |
+
+### Settings (Super Admin only)
+
+| Method | Endpoint | Auth | Deskripsi |
+|---|---|---|---|
+| `GET` | `/settings/stats` | ADMIN | Statistik user (per role & per status) |
+| `GET` | `/settings/users` | ADMIN | Daftar user dengan pagination + filter |
+| `POST` | `/settings/users` | ADMIN | Buat user baru |
+| `PATCH` | `/settings/users/:id` | ADMIN | Edit data user (nama, email, role, password opsional) |
+| `PATCH` | `/settings/users/:id/role` | ADMIN | Ubah role user |
+| `PATCH` | `/settings/users/:id/status` | ADMIN | Ubah status akun (ACTIVE/DISABLED/BANNED) |
+| `GET` | `/settings/audit-logs` | ADMIN | Daftar audit log dengan pagination + filter |
+
+**Query `GET /settings/users`:**
+```
+page, limit, search (nama/email), role, status
+```
+
+**Body `POST /settings/users`:**
+```json
+{
+  "name": "Nama Lengkap",
+  "email": "email@domain.com",
+  "password": "Password1!",
+  "role": "PUBLIC | VERIFIER | FIELD_VERIFIER | ADMIN",
+  "phone": "08xxx (opsional)"
+}
+```
+Validasi identik dengan endpoint register.
+
+**Body `PATCH /settings/users/:id`:**
+```json
+{
+  "name": "Nama Baru",
+  "email": "email@baru.com",
+  "role": "VERIFIER",
+  "phone": "08xxx (opsional)",
+  "password": "PasswordBaru1! (opsional — kosongkan jika tidak diubah)"
+}
+```
+
+**Body `PATCH /settings/users/:id/status`:**
+```json
+{ "status": "ACTIVE | DISABLED | BANNED" }
+```
+
+**Query `GET /settings/audit-logs`:**
+```
+page, limit, search (nama/email/aksi/deskripsi), action, role, dateFrom, dateTo
+```
+
+**Aksi yang dicatat di Audit Log:**
+- Auth: `AUTH_REGISTER`, `AUTH_LOGIN`, `AUTH_GOOGLE_LOGIN`, `AUTH_LOGOUT`
+- User: `USER_CREATE`, `USER_UPDATE_ROLE`, `USER_ENABLE`, `USER_DISABLE`, `USER_BAN`
+- Laporan: `REPORT_CREATE`, `REPORT_VERIFY`, `REPORT_REJECT`, `REPORT_IN_PROGRESS`, `REPORT_RESOLVED`, `REPORT_DELETE`
 
 ---
 
@@ -327,7 +382,7 @@ REJECTED    → (terminal, tidak bisa diubah)
 | Variabel | Wajib | Default | Deskripsi |
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | ✅ | — | URL backend API |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ✅ | — | Client ID dari Google Cloud Console (untuk tombol Login dengan Google) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ✅ | — | Client ID dari Google Cloud Console |
 | `NEXT_PUBLIC_MAP_DEFAULT_LAT` | — | `-6.2088` | Latitude pusat peta |
 | `NEXT_PUBLIC_MAP_DEFAULT_LNG` | — | `106.8456` | Longitude pusat peta |
 | `NEXT_PUBLIC_MAP_DEFAULT_ZOOM` | — | `12` | Zoom level peta |
@@ -339,11 +394,31 @@ REJECTED    → (terminal, tidak bisa diubah)
 | Peran | Kemampuan |
 |---|---|
 | `PUBLIC` | Daftar · Login (email atau Google) · Buat laporan · Edit/hapus laporan sendiri |
-| `VERIFIER` | Semua PUBLIC + Update status laporan · Akses dashboard admin |
-| `ADMIN` | Semua VERIFIER + Kelola user · Hapus laporan siapapun · Ubah peran user |
+| `VERIFIER` | Semua PUBLIC + Verifikasi/tolak laporan · Akses dashboard admin |
+| `FIELD_VERIFIER` | Semua PUBLIC + Lihat semua laporan (antrian) · Update status ke IN_PROGRESS & RESOLVED dengan foto bukti |
+| `ADMIN` | Semua VERIFIER + Semua FIELD_VERIFIER + Kelola user (via Settings) · Hapus laporan siapapun · Akses audit log |
 
-> Akun VERIFIER dan ADMIN dibuat manual melalui Prisma Studio (`npm run prisma:studio`) atau query langsung ke database.
-> Akun yang dibuat via Google OAuth mendapat role `PUBLIC` secara default dan dapat di-upgrade oleh ADMIN.
+> Akun baru mendapat role `PUBLIC` secara default. Role dapat diubah oleh ADMIN melalui halaman **Settings → Kelola User**.
+> Akun dengan status `DISABLED` tidak dapat login sampai diaktifkan kembali. Akun `BANNED` diblokir secara permanen.
+
+---
+
+## Migrasi Database
+
+Jalankan migrasi secara berurutan setelah setup awal:
+
+```bash
+# 1. Migrasi Prisma standar (membuat tabel dasar)
+cd backend && npm run prisma:migrate
+
+# 2. Migrasi manual — jalankan satu per satu sesuai urutan
+psql -U postgres -d jalanrusak -f prisma/migrations/add_google_oauth.sql
+psql -U postgres -d jalanrusak -f prisma/migrations/add_field_verifier.sql
+psql -U postgres -d jalanrusak -f prisma/migrations/add_settings_features.sql
+
+# 3. Regenerate Prisma client (hentikan dev server dulu untuk menghindari DLL lock)
+npm run prisma:generate
+```
 
 ---
 
@@ -368,19 +443,6 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 
 Backend **tidak** membutuhkan Google Client ID — verifikasi dilakukan dengan memanggil `https://www.googleapis.com/oauth2/v3/userinfo`.
 
-### 3. Jalankan Database Migration
-
-```bash
-# Lokal
-psql -U postgres -d jalanrusak -f backend/prisma/migrations/add_google_oauth.sql
-
-# Production VPS
-psql -U postgres -d jalanrusak -f /root/apps/jalanrusak_id/backend/prisma/migrations/add_google_oauth.sql
-
-# Lalu regenerate Prisma client (hentikan dev server dulu)
-cd backend && npm run prisma:generate
-```
-
 ---
 
 ## Deployment Production
@@ -404,27 +466,22 @@ git clone <url-repo> .
 cp backend/.env.example backend/.env          # sesuaikan semua nilai
 cp frontend/.env.example frontend/.env.local  # NEXT_PUBLIC_API_URL → domain API
 
+# Jalankan semua migrasi
+cd backend
+npm run prisma:migrate
+psql "$DATABASE_URL" -f prisma/migrations/add_google_oauth.sql
+psql "$DATABASE_URL" -f prisma/migrations/add_field_verifier.sql
+psql "$DATABASE_URL" -f prisma/migrations/add_settings_features.sql
+npm run prisma:generate
+
 # Build & start
-cd backend && npm ci && npm run build
+npm run build
 cd ../frontend && npm ci --legacy-peer-deps && npm run build
 pm2 start /root/apps/jalanrusak_id/ecosystem.config.js
 pm2 save && pm2 startup
 ```
 
 ### Apache Reverse Proxy
-
-Aktifkan modul proxy yang dibutuhkan (AlmaLinux/CentOS: sudah aktif secara default):
-
-```bash
-# Ubuntu/Debian
-a2enmod proxy proxy_http headers
-systemctl restart apache2
-
-# AlmaLinux/CentOS — cek apakah sudah aktif
-httpd -M | grep proxy
-```
-
-Buat virtual host baru:
 
 ```bash
 # AlmaLinux: /etc/httpd/conf.d/jalanrusak.conf
@@ -437,9 +494,7 @@ Buat virtual host baru:
 <VirtualHost *:80>
     ServerName jalan-rusak.andifawicaksono.cloud
 
-    # Izinkan upload hingga 15MB
     LimitRequestBody 15728640
-
     ProxyPreserveHost On
 
     # 1. Static uploads backend — wajib sebelum ProxyPass /
@@ -457,8 +512,6 @@ Buat virtual host baru:
     RequestHeader set X-Forwarded-Proto "http"
 </VirtualHost>
 ```
-
-Set env sesuai dengan konfigurasi di atas:
 
 ```env
 # frontend/.env.local
@@ -482,10 +535,6 @@ Pasang SSL dengan Certbot:
 ```bash
 # AlmaLinux
 dnf install -y python3-certbot-apache
-certbot --apache -d jalan-rusak.andifawicaksono.cloud
-
-# Ubuntu
-apt install -y python3-certbot-apache
 certbot --apache -d jalan-rusak.andifawicaksono.cloud
 ```
 
@@ -515,7 +564,7 @@ pm2 reload jalanrusak-frontend
 
 ## Mengganti Storage Foto
 
-Storage menggunakan interface `IStorageProvider` di `backend/src/middleware/upload.middleware.ts`. Cukup ubah `STORAGE_TYPE` di `.env`:
+Storage menggunakan interface `IStorageProvider` di `backend/src/utils/storage.ts`. Cukup ubah `STORAGE_TYPE` di `.env`:
 
 | Nilai | Keterangan |
 |---|---|
@@ -523,4 +572,4 @@ Storage menggunakan interface `IStorageProvider` di `backend/src/middleware/uplo
 | `minio` | MinIO object storage (install: `npm install minio`) |
 | `s3` | AWS S3 (install: `npm install @aws-sdk/client-s3`) |
 
-Implementasi MinIO dan S3 sudah tersedia sebagai stub di file yang sama — aktifkan dengan uncomment kodenya.
+Implementasi MinIO dan S3 tersedia sebagai stub — aktifkan dengan mengimplementasi `IStorageProvider` dan mendaftarkannya di `createStorageProvider()`.
